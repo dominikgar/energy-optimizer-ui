@@ -1,4 +1,6 @@
 // @ts-nocheck
+export const dynamic = "force-dynamic"; // Wycłącza agresywny cache Next.js
+
 import { Pool } from 'pg';
 import Chart from './Chart';
 import UploadSection from './UploadSection';
