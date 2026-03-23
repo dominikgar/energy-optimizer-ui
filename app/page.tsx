@@ -6,6 +6,7 @@ import Chart from './Chart';
 import Link from 'next/link';
 import UploadSection from './UploadSection';
 import { auth } from '@clerk/nextjs/server';
+import { SignInButton } from '@clerk/nextjs'; // Dodany import przycisku logowania!
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -13,24 +14,71 @@ const pool = new Pool({
 });
 
 export default async function Home({ searchParams }) {
-  // 1. Sprawdzamy, czy użytkownik jest zalogowany
   const { userId } = auth();
 
-  // 2. Jeśli NIE JEST, pokazujemy Landing Page (i ani grama danych!)
+  // --- ZAAWANSOWANY LANDING PAGE DLA GOŚCI ---
   if (!userId) {
     return (
-      <main style={{ padding: '5rem 2rem', textAlign: 'center', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <h1 style={{ fontSize: '4rem', marginBottom: '1rem', background: 'linear-gradient(to right, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900' }}>
-          ⚡ Energy Optimizer AI
-        </h1>
-        <p style={{ color: '#888', fontSize: '1.5rem', maxWidth: '600px', lineHeight: '1.5' }}>
-          Zaloguj się, wgraj swój plik z Taurona i zobacz, ile pieniędzy możesz zaoszczędzić na taryfach dynamicznych.
-        </p>
+      <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+        
+        {/* Sekcja Hero (Główna) */}
+        <div style={{ padding: '8rem 2rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#1a2e1a', color: '#34d399', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #2d5a2d' }}>
+            Nowość: Gotowe na taryfy dynamiczne 2024/2025
+          </div>
+          <h1 style={{ fontSize: '4.5rem', marginBottom: '1.5rem', background: 'linear-gradient(to right, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px' }}>
+            Zapanuj nad swoim rachunkiem za prąd
+          </h1>
+          <p style={{ color: '#a1a1aa', fontSize: '1.3rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 3rem' }}>
+            Wgraj swój plik z Taurona i natychmiast dowiedz się, ile realnie kosztuje Cię prąd na giełdzie. Odkryj swój potencjał oszczędności dzięki inteligentnej analityce.
+          </p>
+          
+          <SignInButton mode="modal">
+            <button style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)', transition: 'transform 0.2s' }}>
+              Zacznij optymalizację za darmo
+            </button>
+          </SignInButton>
+        </div>
+
+        {/* Sekcja Funkcji (Co zyskujesz) */}
+        <div style={{ backgroundColor: '#111', padding: '5rem 2rem', borderTop: '1px solid #222', borderBottom: '1px solid #222' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#fff', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+              
+              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Analityka 15-minutowa</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Łączymy Twoje dane od operatora z oficjalnymi cenami PSE. Zobaczysz dokładny koszt każdego kwadransa swojego zużycia na przepięknym, interaktywnym wykresie.</p>
+              </div>
+
+              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz, jeśli przesuniesz zaledwie 15% swojego najbardziej kosztochłonnego zużycia na najtańsze godziny w ciągu doby.</p>
+              </div>
+
+              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔒</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Prywatność danych</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Każdy wgrany plik jest trwale przypisywany do Twojego bezpiecznego konta. Tylko Ty masz dostęp do swojego profilu energetycznego.</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {/* Mała stopka */}
+        <footer style={{ textAlign: 'center', padding: '3rem', color: '#555', fontSize: '0.9rem' }}>
+          © 2025-2026 Energy Optimizer AI. Zbudowane dla optymalizacji na RCE-PLN.
+        </footer>
+
       </main>
     );
   }
 
-  // 3. Jeśli JEST zalogowany, ładujemy jego wykresy
+  // --- KOD DLA ZALOGOWANYCH UŻYTKOWNIKÓW (BEZ ZMIAN) ---
   const days = parseInt(searchParams?.days) || 3;
   const hoursLimit = days * 24;
 
