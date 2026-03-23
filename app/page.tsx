@@ -2,19 +2,16 @@
 import { Pool } from 'pg';
 import Chart from './Chart';
 
-// Łączenie z Twoją bazą Neon
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Ta funkcja wykonuje się na serwerze (bezpiecznie pobiera dane)
 export default async function Home() {
   let chartData = [];
   let stats = { cost: 0, kwh: 0, savings: 0 };
 
   try {
-    // Pobieramy ostatnie 3 dni z Twojej bazy
     const { rows } = await pool.query(`
       WITH hourly_prices AS (
           SELECT DATE_TRUNC('hour', timestamp) AS hour_ts, AVG(price_pln_mwh) AS price_mwh
@@ -28,7 +25,6 @@ export default async function Home() {
       LIMIT 72
     `);
 
-    // Przetwarzanie danych dla wykresu
     chartData = rows.reverse().map(row => ({
       time: new Date(row.timestamp).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
       date: new Date(row.timestamp).toLocaleDateString('pl-PL'),
@@ -36,12 +32,9 @@ export default async function Home() {
       price: parseFloat(row.price_mwh) / 1000
     }));
 
-    // Obliczanie podsumowania (łączny koszt i zużycie)
     stats.cost = chartData.reduce((sum, curr) => sum + (curr.kwh * curr.price), 0);
     stats.kwh = chartData.reduce((sum, curr) => sum + curr.kwh, 0);
-    
-    // Potencjalna oszczędność z optymalizacji (15% przesunięcia na tańsze godziny)
-    stats.savings = stats.cost * 0.115; // Szacunkowe 11.5% z naszej poprzedniej analizy
+    stats.savings = stats.cost * 0.115;
     
   } catch (error) {
     console.error("Błąd bazy danych:", error);
@@ -52,7 +45,6 @@ export default async function Home() {
       <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚡ Energy Optimizer AI</h1>
       <p style={{ color: '#888', marginBottom: '3rem' }}>Inteligentna analityka Twojego profilu zużycia na taryfach dynamicznych.</p>
 
-      {/* Panele z wynikami */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
         
         <div style={{ padding: '1.5rem', backgroundColor: '#222', borderRadius: '12px', border: '1px solid #333' }}>
@@ -73,7 +65,6 @@ export default async function Home() {
 
       </div>
 
-      {/* Wykres */}
       <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Profil Zużycia vs. Ceny (Ostatnie 72h)</h2>
       <Chart data={chartData} />
     </main>
