@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Pool } from 'pg';
 import Chart from './Chart';
+import UploadSection from './UploadSection';
 import Link from 'next/link';
 
 const pool = new Pool({
@@ -78,6 +79,9 @@ export default async function Home({ searchParams }) {
           <Link href="/?days=30" style={getBtnStyle(30)}>30 Dni</Link>
         </div>
       </div>
+
+      {/* NOWY PANEL WGRYWANIA */}
+      <UploadSection />
 
       {/* Kafelki ze Statystykami */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
