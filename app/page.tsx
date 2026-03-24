@@ -64,8 +64,6 @@ export default async function Home({ searchParams }) {
   }
 
   // --- LOGIKA SUBSKRYPCJI (MOCK) ---
-  // USTAWIŁEM NA 'true', żebyś mógł w spokoju podejrzeć i ocenić wykres :)
-  // (Później zmienisz na false przy wdrażaniu Stripe)
   const isPremiumUser = true; 
 
   // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
@@ -232,7 +230,6 @@ export default async function Home({ searchParams }) {
         {todayForecast ? (
           <div style={{ position: 'relative', borderRadius: '24px', overflow: 'hidden' }}>
             
-            {/* Paywall Overlay - Pojawia się tylko gdy !isPremiumUser */}
             {!isPremiumUser && (
               <div style={{ 
                 position: 'absolute', 
@@ -275,8 +272,53 @@ export default async function Home({ searchParams }) {
                 </div>
               </div>
 
-              {/* HEATMAPA */}
+              {/* HEATMAPA Z WBUDOWANYMI CSS-OWYMI TOOLTIPAMI */}
               <div style={{ paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
+                
+                {/* Style dla płynnego interaktywnego podświetlania i tooltipów */}
+                <style dangerouslySetInnerHTML={{__html: `
+                  .chart-col { position: relative; cursor: crosshair; }
+                  .chart-tooltip {
+                    visibility: hidden;
+                    opacity: 0;
+                    position: absolute;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: #27272a;
+                    color: #fff;
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    font-size: 0.8rem;
+                    line-height: 1.4;
+                    white-space: nowrap;
+                    transition: opacity 0.2s ease, transform 0.2s ease;
+                    z-index: 50;
+                    pointer-events: none;
+                    border: 1px solid #3f3f46;
+                    box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+                    text-align: center;
+                  }
+                  .chart-tooltip::after {
+                    content: '';
+                    position: absolute;
+                    top: 100%;
+                    left: 50%;
+                    margin-left: -6px;
+                    border-width: 6px;
+                    border-style: solid;
+                    border-color: #3f3f46 transparent transparent transparent;
+                  }
+                  .chart-col:hover .chart-tooltip {
+                    visibility: visible;
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(-5px);
+                  }
+                  .chart-col:hover .chart-bar-fill {
+                    opacity: 1 !important;
+                    filter: brightness(1.4);
+                  }
+                `}} />
+
                 <p style={{ margin: '0 0 1rem 0', color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
                 
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
@@ -288,7 +330,7 @@ export default async function Home({ searchParams }) {
                     const isFullHour = item.time.endsWith('00');
                     
                     return (
-                      <div key={i} style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                      <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                         
                         <span style={{ 
                           fontSize: '0.65rem', 
@@ -301,18 +343,23 @@ export default async function Home({ searchParams }) {
                           {isMin || isMax ? item.price.toFixed(2) : ''}
                         </span>
                         
-                        <div style={{ 
+                        <div className="chart-bar-fill" style={{ 
                           width: '90%', 
                           maxWidth: '8px', 
                           minWidth: '2px', 
                           height: `${barHeight}px`, 
                           backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', 
                           borderRadius: '2px 2px 0 0', 
-                          opacity: isMin || isMax ? 1 : 0.6
-                        }}
-                        title={`Godzina ${item.time}: ${item.price.toFixed(2)} PLN`}
-                        ></div>
+                          opacity: isMin || isMax ? 1 : 0.6,
+                          transition: 'opacity 0.2s, filter 0.2s'
+                        }}></div>
                         
+                        {/* WŁASNY, BŁYSKAWICZNY TOOLTIP (unosi się idealnie nad danym słupkiem) */}
+                        <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
+                          <strong style={{ color: isMin ? '#10b981' : isMax ? '#fca5a5' : '#60a5fa' }}>{item.time}</strong><br/>
+                          {item.price.toFixed(2)} PLN
+                        </div>
+
                         <span style={{ 
                           fontSize: '0.6rem', 
                           marginTop: '4px',
