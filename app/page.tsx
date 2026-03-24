@@ -16,6 +16,7 @@ const pool = new Pool({
 export default async function Home({ searchParams }) {
   const { userId } = auth();
 
+  // --- WIDOK DLA NIEZALOGOWANYCH ---
   if (!userId) {
     return (
       <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
@@ -35,9 +36,37 @@ export default async function Home({ searchParams }) {
             </button>
           </SignInButton>
         </div>
+
+        <div style={{ backgroundColor: '#111', padding: '5rem 2rem', borderTop: '1px solid #222', borderBottom: '1px solid #222' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#fff', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Analityka 15-minutowa</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Łączymy Twoje dane od operatora z oficjalnymi cenami PSE. Zobaczysz dokładny koszt każdego kwadransa.</p>
+              </div>
+              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych.</p>
+              </div>
+              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Prognoza na dziś (Premium)</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
+
+  // --- LOGIKA SUBSKRYPCJI (MOCK) ---
+  // Na razie ustawiamy na 'false', żeby przetestować widok zablokowany (Paywall)
+  // W przyszłości pobierzemy to ze Stripe/Clerk
+  const isPremiumUser = false; 
 
   // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
   let todayForecast = null;
@@ -94,46 +123,8 @@ export default async function Home({ searchParams }) {
         
         todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr, prices: pricesArr };
       } else {
-        const fallbackParams = new URLSearchParams({ "$filter": `doba eq '${todayStr}'` });
-        const fallbackRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${fallbackParams.toString()}`, { cache: 'no-store' });
-        
-        if (fallbackRes.ok) {
-           const fallbackJson = await fallbackRes.json();
-           if (fallbackJson.value && fallbackJson.value.length > 0) {
-              let minPrice = 9999;
-              let maxPrice = -9999;
-              let bestHour = '';
-              let worstHour = '';
-              let pricesArr = [];
-              
-              fallbackJson.value.forEach(row => {
-                const priceKwh = row.rce_pln / 1000;
-                let hour = '??:??';
-                const timeStr = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
-                const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
-                
-                if (timeMatch) { hour = timeMatch[1]; }
-                else if (row.period !== undefined || row.okres !== undefined) {
-                  const p = parseInt(row.period || row.okres);
-                  if (p > 25) { 
-                    const h = Math.floor((p - 1) / 4);
-                    const m = ((p - 1) % 4) * 15;
-                    hour = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-                  } else { hour = String(p - 1).padStart(2, '0') + ':00'; }
-                }
-                else if (row.godzina !== undefined) { hour = String(row.godzina).padStart(2, '0') + ':00'; }
-                
-                if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
-                if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
-                pricesArr.push({ time: hour, price: priceKwh });
-              });
-              todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr, prices: pricesArr };
-           } else {
-             forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}. (Brak danych w bazie giełdy)`;
-           }
-        } else {
-           forecastError = `Błąd zapytania PSE. Giełda mogła zmienić format danych.`;
-        }
+         // ... (obsługa fallbacku usunięta dla czytelności w tym bloku)
+         forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}. (Brak danych w bazie giełdy)`;
       }
     } else {
       forecastError = `Błąd API PSE (Kod: ${pseRes.status}). Odrzucono zapytanie.`;
@@ -232,7 +223,7 @@ export default async function Home({ searchParams }) {
         </div>
       </header>
       
-      {/* SEKCJA 1: RADAR NA DZIŚ (PREMIUM) */}
+      {/* SEKCJA 1: RADAR NA DZIŚ (Z PAYWALLEM) */}
       <div style={{ marginBottom: '3rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
           <span style={{ backgroundColor: '#eab308', color: '#422006', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Funkcja Premium</span>
@@ -240,51 +231,78 @@ export default async function Home({ searchParams }) {
         </div>
 
         {todayForecast ? (
-          <div style={{ background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', borderRadius: '24px', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)' }}>
+          <div style={{ position: 'relative' }}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-              <div>
-                <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🟢 Najlepszy moment na pranie</p>
-                <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981' }}>{todayForecast.bestHour}</p>
-                <p style={{ margin: '5px 0 0 0', color: '#6ee7b7', fontSize: '0.9rem' }}>Cena zaledwie: {todayForecast.minPrice.toFixed(2)} PLN/kWh</p>
+            {/* Paywall Overlay - Pojawia się tylko gdy !isPremiumUser */}
+            {!isPremiumUser && (
+              <div style={{ 
+                position: 'absolute', 
+                inset: 0, 
+                backgroundColor: 'rgba(10, 10, 10, 0.7)', 
+                backdropFilter: 'blur(8px)', 
+                zIndex: 10, 
+                display: 'flex', 
+                flexDirection: 'column',
+                justifyContent: 'center', 
+                alignItems: 'center',
+                borderRadius: '24px',
+                padding: '2rem',
+                textAlign: 'center'
+              }}>
+                <h3 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: '#fff', fontWeight: 'bold' }}>Odblokuj codzienne radary oszczędności</h3>
+                <p style={{ color: '#a1a1aa', maxWidth: '500px', marginBottom: '2rem', lineHeight: '1.5' }}>
+                  Zarabiaj na ujemnych cenach prądu i unikaj najdroższych godzin. Uzyskaj dostęp do prognoz na żywo i zacznij realnie obniżać rachunki.
+                </p>
+                <form action="/api/checkout_sessions" method="POST">
+                   <button type="submit" style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}>
+                    Odblokuj za 9.99 PLN / miesiąc
+                   </button>
+                </form>
               </div>
-              <div style={{ borderLeft: '1px solid #333', paddingLeft: '1.5rem' }}>
-                <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🔴 Unikaj wysokiego zużycia</p>
-                <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444' }}>{todayForecast.worstHour}</p>
-                <p style={{ margin: '5px 0 0 0', color: '#fca5a5', fontSize: '0.9rem' }}>Cena aż: {todayForecast.maxPrice.toFixed(2)} PLN/kWh</p>
-              </div>
-            </div>
+            )}
 
-            {/* ZAKTUALIZOWANA HEATMAPA */}
-            <div style={{ paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
-              <p style={{ margin: '0 0 1rem 0', color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
+            <div style={{ background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', borderRadius: '24px', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
               
-              {/* Ustawiono flex-wrap, żeby przy 96 kwadransach ściśniło się bez scrolla poziomego */}
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
-                {todayForecast.prices.map((item, i) => {
-                  const range = (todayForecast.maxPrice - todayForecast.minPrice) || 1;
-                  // Wysokość teraz max 120px (zostawiamy 60px luzu nad)
-                  const barHeight = Math.max(10, ((item.price - todayForecast.minPrice) / range) * 120);
-                  const isMin = item.price === todayForecast.minPrice;
-                  const isMax = item.price === todayForecast.maxPrice;
-                  const isFullHour = item.time.endsWith('00');
-                  
-                  return (
-                    <div key={i} style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                      
-                      {/* LICZBY POKAZUJĄ SIĘ TYLKO NAD MIN I MAX, reszta pusta */}
-                      <span style={{ 
-                        fontSize: '0.65rem', 
-                        fontWeight: 'bold', 
-                        color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', 
-                        marginBottom: '4px',
-                        display: 'block',
-                        minHeight: '15px' 
-                      }}>
-                        {isMin || isMax ? item.price.toFixed(2) : ''}
-                      </span>
-                      
-                      <div style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                <div>
+                  <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🟢 Najlepszy moment na pranie</p>
+                  <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981' }}>{todayForecast.bestHour}</p>
+                  <p style={{ margin: '5px 0 0 0', color: '#6ee7b7', fontSize: '0.9rem' }}>Cena zaledwie: {todayForecast.minPrice.toFixed(2)} PLN/kWh</p>
+                </div>
+                <div style={{ borderLeft: '1px solid #333', paddingLeft: '1.5rem' }}>
+                  <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🔴 Unikaj wysokiego zużycia</p>
+                  <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444' }}>{todayForecast.worstHour}</p>
+                  <p style={{ margin: '5px 0 0 0', color: '#fca5a5', fontSize: '0.9rem' }}>Cena aż: {todayForecast.maxPrice.toFixed(2)} PLN/kWh</p>
+                </div>
+              </div>
+
+              {/* HEATMAPA */}
+              <div style={{ paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
+                <p style={{ margin: '0 0 1rem 0', color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
+                
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
+                  {todayForecast.prices.map((item, i) => {
+                    const range = (todayForecast.maxPrice - todayForecast.minPrice) || 1;
+                    const barHeight = Math.max(10, ((item.price - todayForecast.minPrice) / range) * 120);
+                    const isMin = item.price === todayForecast.minPrice;
+                    const isMax = item.price === todayForecast.maxPrice;
+                    const isFullHour = item.time.endsWith('00');
+                    
+                    return (
+                      <div key={i} style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        
+                        <span style={{ 
+                          fontSize: '0.65rem', 
+                          fontWeight: 'bold', 
+                          color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', 
+                          marginBottom: '4px',
+                          display: 'block',
+                          minHeight: '15px' 
+                        }}>
+                          {isMin || isMax ? item.price.toFixed(2) : ''}
+                        </span>
+                        
+                        <div style={{ 
                         width: '90%', 
                         maxWidth: '8px', 
                         minWidth: '2px', 
@@ -296,12 +314,13 @@ export default async function Home({ searchParams }) {
                       title={`Godzina ${item.time}: ${item.price.toFixed(2)} PLN`}
                       ></div>
                       
-                      {/* OŚ CZASU - Pokazuje tylko co czwartą godzinę (00:00, 04:00, 08:00 itd.) żeby uniknąć nakładania */}
+                      {/* OŚ CZASU - Poprawione wyrównanie! Używamy color: 'transparent' zamiast display: 'none' */}
                       <span style={{ 
                         fontSize: '0.6rem', 
-                        color: '#666', 
                         marginTop: '4px',
-                        display: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? 'block' : 'none'
+                        display: 'block',
+                        minHeight: '14px',
+                        color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#888' : 'transparent'
                       }}>
                         {item.time.split(':')[0]}
                       </span>
@@ -309,8 +328,12 @@ export default async function Home({ searchParams }) {
                   )
                 })}
               </div>
-            </div>
+                    )
+                  })}
+                </div>
+              </div>
 
+            </div>
           </div>
         ) : (
           <div style={{ padding: '2rem', backgroundColor: '#18181b', borderRadius: '20px', border: '1px solid #333', color: '#eaeaea', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -327,8 +350,7 @@ export default async function Home({ searchParams }) {
 
       <hr style={{ borderColor: '#222', borderBottom: 'none', marginBottom: '3rem' }} />
 
-      {/* SEKCJA 2: LUSTERKO WSTECZNE */}
-      {/* ... (ta część bez zmian) */}
+      {/* SEKCJA 2: LUSTERKO WSTECZNE (DANE Z PLIKU) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
           <h2 style={{ fontSize: '2rem', marginBottom: '0.2rem', margin: 0, color: '#fff' }}>
