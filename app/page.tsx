@@ -155,25 +155,27 @@ export default async function Home({ searchParams }) {
                  
                  <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby</p>
                  
-                 {/* RESPONSIVNY KONTENER DLA MAKIETY WYKRESU */}
+                 {/* RESPONSIVNY KONTENER DLA MAKIETY WYKRESU (POPRAWIONE ETYKIETY) */}
                  <div className="chart-scroll-box">
-                   <div className="chart-flex-box" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
-                      {[0.3, 0.25, 0.2, 0.35, 0.5, 0.2, -0.05, -0.02, 0.1, 0.3, 0.6, 0.85, 0.7, 0.5, 0.4].map((price, i) => {
-                         const isMin = price === -0.05;
-                         const isMax = price === 0.85;
-                         const h = Math.max(10, ((price - (-0.05)) / 0.9) * 120);
-                         return (
-                           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-                             <div style={{ width: '70%', minWidth: '4px', height: `${h}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '3px 3px 0 0' }}></div>
-                           </div>
-                         )
-                      })}
+                   <div className="chart-flex-box" style={{ display: 'flex', flexDirection: 'column' }}>
+                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
+                        {[0.3, 0.25, 0.2, 0.35, 0.5, 0.2, -0.05, -0.02, 0.1, 0.3, 0.6, 0.85, 0.7, 0.5, 0.4].map((price, i) => {
+                           const isMin = price === -0.05;
+                           const isMax = price === 0.85;
+                           const h = Math.max(10, ((price - (-0.05)) / 0.9) * 120);
+                           return (
+                             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                               <div style={{ width: '70%', minWidth: '4px', height: `${h}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '3px 3px 0 0' }}></div>
+                             </div>
+                           )
+                        })}
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500', padding: '0 5px' }}>
+                        <span>00:00</span>
+                        <span>12:00</span>
+                        <span>23:00</span>
+                     </div>
                    </div>
-                 </div>
-                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500' }}>
-                    <span>00:00</span>
-                    <span>12:00</span>
-                    <span>23:00</span>
                  </div>
               </div>
 
