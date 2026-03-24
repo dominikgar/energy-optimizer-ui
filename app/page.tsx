@@ -6,7 +6,7 @@ import Chart from './Chart';
 import Link from 'next/link';
 import UploadSection from './UploadSection';
 import { auth } from '@clerk/nextjs/server';
-import { SignInButton } from '@clerk/nextjs';
+import { SignInButton, UserButton } from '@clerk/nextjs'; // Dodany UserButton!
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -71,13 +71,12 @@ export default async function Home({ searchParams }) {
         pseJson.value.forEach(row => {
           const priceKwh = row.rce_pln / 1000;
           
-          // OSTATECZNY DEKODER CZASU (Zna wszystkie stare i nowe angielskie nazwy!)
           let hour = '??:??';
           const timeStr = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
           const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
           
           if (timeMatch) {
-            hour = timeMatch[1]; // Łapie format 13:00 z tekstu
+            hour = timeMatch[1];
           } else if (row.period !== undefined || row.okres !== undefined) {
             const p = parseInt(row.period || row.okres);
             if (p > 25) { 
@@ -226,7 +225,18 @@ export default async function Home({ searchParams }) {
   });
 
   return (
-    <main style={{ padding: '3rem', fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+    <main style={{ padding: '2rem 3rem', fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+      
+      {/* --- NOWY HEADER --- */}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', paddingBottom: '1.5rem', borderBottom: '1px solid #222' }}>
+        <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>
+          ⚡ Energy Optimizer AI
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <span style={{ color: '#888', fontSize: '0.9rem', display: 'none', '@media(minWidth: 600px)': { display: 'block' } }}>Witaj w panelu</span>
+          <UserButton afterSignOutUrl="/" />
+        </div>
+      </header>
       
       {/* SEKCJA 1: RADAR NA DZIŚ (PREMIUM) */}
       <div style={{ marginBottom: '3rem' }}>
