@@ -107,7 +107,7 @@ export default async function Home({ searchParams }) {
             </SignInButton>
           </div>
 
-          {/* NOWA SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
+          {/* SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
           <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
             <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center' }}>
               
@@ -479,7 +479,6 @@ export default async function Home({ searchParams }) {
           >
             Profil Historyczny
           </Link>
-          {/* NOWA ZAKŁADKA: API & HA */}
           <Link 
             href={`/?tab=api&days=${days}`} 
             scroll={false} 
@@ -497,7 +496,7 @@ export default async function Home({ searchParams }) {
             }}
           >
             Automatyzacje API
-            <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>WKRÓTCE</span>
+            <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>LIVE</span>
           </Link>
         </div>
 
@@ -521,7 +520,7 @@ export default async function Home({ searchParams }) {
               </Link>
               <Link href={`/?tab=api&days=${days}`} scroll={false} style={{ padding: '1.2rem 1.5rem', textDecoration: 'none', color: activeTab === 'api' ? '#a855f7' : '#334155', fontWeight: activeTab === 'api' ? 'bold' : 'normal', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 Automatyzacje API
-                <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>WKRÓTCE</span>
+                <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>LIVE</span>
               </Link>
             </div>
           </details>
@@ -743,7 +742,7 @@ export default async function Home({ searchParams }) {
         )}
 
         {/* ========================================= */}
-        {/* SEKCJA 3: ZAKŁADKA API & SMART HOME (WKRÓTCE) */}
+        {/* SEKCJA 3: ZAKŁADKA API & SMART HOME (LIVE) */}
         {/* ========================================= */}
         {activeTab === 'api' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
@@ -753,34 +752,55 @@ export default async function Home({ searchParams }) {
             </div>
             
             <div className="mobile-card-padding" style={{ backgroundColor: '#ffffff', padding: '3rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', alignItems: 'center' }}>
-                <div style={{ flex: '1 1 300px' }}>
-                  <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>Twój dom, Twoje zasady. Nasze dane.</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', alignItems: 'flex-start' }}>
+                <div style={{ flex: '1 1 350px' }}>
+                  <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>API jest już gotowe do działania!</h3>
                   <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                    Pracujemy nad otwartym API, które pozwoli Ci pobrać nasze wyliczenia (najtańsze okna 3-godzinne, przewidywania anomalii) bezpośrednio do Twojego systemu Smart Home (Home Assistant, Node-RED, Fibaro).
+                    Pobieraj nasze wyliczenia bezpośrednio do swojego Home Assistanta. Zautomatyzuj ogrzewanie i ładuj urządzenia dokładnie wtedy, gdy prąd kosztuje najmniej.
                   </p>
-                  <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
-                    Dzięki temu Twoja pompa ciepła, bojler czy ładowarka EV włączą się <strong>całkowicie automatycznie</strong>, gdy prąd będzie najtańszy lub ujemny. Bez Twojej ingerencji.
-                  </p>
-                  <button style={{ padding: '12px 24px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                    Zapisz się na listę Early Access
-                  </button>
-                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '1rem' }}>* Przewidywany koszt abonamentu API: 14.99 PLN/msc.</p>
+                  
+                  {/* SEKRETNY KLUCZ API */}
+                  <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Klucz autoryzacyjny (API Key)</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '10px' }}>Zabezpiecz swoje zapytania, używając nagłówka: <code>Authorization: Bearer</code></p>
+                    <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', color: '#334155', fontWeight: 'bold', userSelect: 'all', fontSize: '1rem' }}>
+                      demo_premium_key_123
+                    </code>
+                  </div>
+
+                  {/* KOD YAML DLA HA */}
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
+                  <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '12px', fontSize: '0.85rem', overflowX: 'auto', lineHeight: '1.5', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
+{`rest:
+  - resource: "https://twoja-domena.vercel.app/api/v1/forecast/best-window"
+    headers:
+      Authorization: "Bearer demo_premium_key_123"
+    sensor:
+      - name: "Energy Best Window Start"
+        value_template: "{{ value_json.recommended_start }}"
+      - name: "Energy Best Window Avg Price"
+        value_template: "{{ value_json.avg_price_pln }}"
+        unit_of_measurement: "PLN/kWh"`}
+                  </pre>
                 </div>
                 
-                <div className="chart-scroll-box" style={{ flex: '1 1 300px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+                {/* WIZUALIZACJA ODPOWIEDZI JSON */}
+                <div className="chart-scroll-box" style={{ flex: '1 1 350px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
                   </div>
                   <div style={{ color: '#a855f7', marginBottom: '8px', fontWeight: 'bold' }}>GET /api/v1/forecast/best-window</div>
+                  <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '15px' }}>Przykładowa odpowiedź serwera (JSON):</p>
+                  
                   <div style={{ paddingLeft: '1rem', borderLeft: '2px solid #334155', minWidth: '350px' }}>
                     {"{"}<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"status"</span>: <span style={{ color: '#a3e635' }}>"success"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump_or_ev"</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowEnd : '14:00'}"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(2) : '-0.05'}</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(4) : '-0.0500'}</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"trigger_automation"</span>: <span style={{ color: '#fbbf24' }}>true</span><br/>
                     {"}"}
                   </div>
