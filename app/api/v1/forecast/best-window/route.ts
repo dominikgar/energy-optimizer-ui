@@ -47,7 +47,8 @@ export async function GET() {
     }
 
     // 3. Ekstrakcja i normalizacja danych
-    let pricesArr = [];
+    // POPRAWKA DLA TYPESCRIPTA: Zdefiniowanie typu tablicy
+    let pricesArr: { time: string, price: number }[] = [];
     
     pseJson.value.forEach((row: any) => {
       const priceKwh = row.rce_pln / 1000;
