@@ -123,7 +123,6 @@ export default async function Home({ searchParams }) {
         
         todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr, prices: pricesArr };
       } else {
-         // ... (obsługa fallbacku usunięta dla czytelności w tym bloku)
          forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}. (Brak danych w bazie giełdy)`;
       }
     } else {
@@ -303,31 +302,27 @@ export default async function Home({ searchParams }) {
                         </span>
                         
                         <div style={{ 
-                        width: '90%', 
-                        maxWidth: '8px', 
-                        minWidth: '2px', 
-                        height: `${barHeight}px`, 
-                        backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', 
-                        borderRadius: '2px 2px 0 0', 
-                        opacity: isMin || isMax ? 1 : 0.6
-                      }}
-                      title={`Godzina ${item.time}: ${item.price.toFixed(2)} PLN`}
-                      ></div>
-                      
-                      {/* OŚ CZASU - Poprawione wyrównanie! Używamy color: 'transparent' zamiast display: 'none' */}
-                      <span style={{ 
-                        fontSize: '0.6rem', 
-                        marginTop: '4px',
-                        display: 'block',
-                        minHeight: '14px',
-                        color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#888' : 'transparent'
-                      }}>
-                        {item.time.split(':')[0]}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+                          width: '90%', 
+                          maxWidth: '8px', 
+                          minWidth: '2px', 
+                          height: `${barHeight}px`, 
+                          backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', 
+                          borderRadius: '2px 2px 0 0', 
+                          opacity: isMin || isMax ? 1 : 0.6
+                        }}
+                        title={`Godzina ${item.time}: ${item.price.toFixed(2)} PLN`}
+                        ></div>
+                        
+                        <span style={{ 
+                          fontSize: '0.6rem', 
+                          marginTop: '4px',
+                          display: 'block',
+                          minHeight: '14px',
+                          color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#888' : 'transparent'
+                        }}>
+                          {item.time.split(':')[0]}
+                        </span>
+                      </div>
                     )
                   })}
                 </div>
