@@ -16,6 +16,9 @@ const pool = new Pool({
 export default async function Home({ searchParams }) {
   const { userId } = auth();
 
+  // Zabezpieczenie searchParams dla kompatybilności z różnymi wersjami Next.js
+  const resolvedParams = await Promise.resolve(searchParams || {});
+
   // --- WIDOK DLA NIEZALOGOWANYCH ---
   if (!userId) {
     return (
@@ -31,7 +34,8 @@ export default async function Home({ searchParams }) {
             Wgraj swój plik z Taurona i natychmiast dowiedz się, ile realnie kosztuje Cię prąd na giełdzie. Odkryj swój potencjał oszczędności.
           </p>
           <SignInButton mode="modal">
-            <button style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'transform 0.2s' }} onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'} onMouseOut={(e) => e.target.style.transform = 'scale(1)'}>
+            {/* USUNIĘTO BŁĘDNE ZDARZENIA MYSZKI DLA SERWERA */}
+            <button style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'transform 0.2s' }}>
               Zacznij optymalizację za darmo
             </button>
           </SignInButton>
@@ -64,8 +68,8 @@ export default async function Home({ searchParams }) {
   }
 
   // --- LOGIKA ZAKŁADEK (TABS) ---
-  const activeTab = searchParams?.tab || 'radar';
-  const days = parseInt(searchParams?.days) || 3;
+  const activeTab = resolvedParams.tab || 'radar';
+  const days = parseInt(resolvedParams.days) || 3;
 
   // --- LOGIKA SUBSKRYPCJI (MOCK) ---
   const isPremiumUser = true; 
@@ -285,7 +289,7 @@ export default async function Home({ searchParams }) {
             </div>
             {todayForecast && (
               <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
-                📅 Dane PSE na dzień: <strong>{new Date(todayForecast.date).toLocaleDateString('pl-PL')}</strong>
+                📅 Dane PSE na dzień: <strong>{todayForecast.date.split('-').reverse().join('.')}</strong>
               </p>
             )}
           </div>
