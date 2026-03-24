@@ -16,7 +16,6 @@ const pool = new Pool({
 export default async function Home({ searchParams }) {
   const { userId } = auth();
 
-  // Zabezpieczenie searchParams dla kompatybilności z różnymi wersjami Next.js
   const resolvedParams = await Promise.resolve(searchParams || {});
 
   // --- WIDOK DLA NIEZALOGOWANYCH ---
@@ -68,14 +67,11 @@ export default async function Home({ searchParams }) {
     );
   }
 
-  // --- LOGIKA ZAKŁADEK (TABS) ---
   const activeTab = resolvedParams.tab || 'radar';
   const days = parseInt(resolvedParams.days) || 3;
 
-  // --- LOGIKA SUBSKRYPCJI (MOCK) ---
   const isPremiumUser = true; 
 
-  // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
   let todayForecast = null;
   let forecastError = null; 
   
@@ -100,10 +96,7 @@ export default async function Home({ searchParams }) {
       if (pseRes.ok) {
         const pseJson = await pseRes.json();
         if (pseJson.value && pseJson.value.length > 0) {
-          let minPrice = 9999;
-          let maxPrice = -9999;
-          let bestHour = '';
-          let worstHour = '';
+          
           let pricesArr = [];
           
           pseJson.value.forEach(row => {
@@ -123,13 +116,85 @@ export default async function Home({ searchParams }) {
             }
             else if (row.godzina !== undefined) { hour = String(row.godzina).padStart(2, '0') + ':00'; }
             
-            if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
-            if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
-            
             pricesArr.push({ time: hour, price: priceKwh });
           });
           
-          todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr, prices: pricesArr };
+          // --- NOWY ALGORYTM SKANOWANIA OKIENEK 3-GODZINNYCH ---
+          // Zakładamy, że dane są po kolei. Musimy znaleźć blok 3 godzin.
+          // Jeśli dane są godzinowe, to 3 elementy. Jeśli co 15 min, to 12 elementów.
+          // Dla bezpieczeństwa, uśredniamy bloki 3-godzinne używając indeksów.
+          
+          // Ustalmy odstęp między odczytami na podstawie pierwszych dwóch próbek
+          const isQuarterHourly = pricesArr.length > 30; // Jeśli próbek jest np. 96, to są kwadranse
+          const elementsIn3Hours = isQuarterHourly ? 12 : 3;
+
+          let bestWindowStart = '';
+          let bestWindowEnd = '';
+          let bestWindowAvgPrice = 9999;
+
+          let worstWindowStart = '';
+          let worstWindowEnd = '';
+          let worstWindowAvgPrice = -9999;
+
+          const absoluteMinPrice = Math.min(...pricesArr.map(p => p.price));
+          const absoluteMaxPrice = Math.max(...pricesArr.map(p => p.price));
+
+          // Szukamy "najlepszych" i "najgorszych" ciągłych przedziałów 3-godzinnych
+          for (let i = 0; i <= pricesArr.length - elementsIn3Hours; i++) {
+            let sum = 0;
+            for (let j = 0; j < elementsIn3Hours; j++) {
+              sum += pricesArr[i + j].price;
+            }
+            const avg = sum / elementsIn3Hours;
+
+            if (avg < bestWindowAvgPrice) {
+              bestWindowAvgPrice = avg;
+              bestWindowStart = pricesArr[i].time;
+              
+              // Obliczanie czasu zakończenia dla czytelności (np. 12:00 -> 15:00)
+              let endItem = pricesArr[i + elementsIn3Hours - 1]; // Ostatni element w oknie (np 14:45)
+              let endHour = parseInt(endItem.time.split(':')[0]);
+              let endMin = parseInt(endItem.time.split(':')[1] || 0);
+              
+              // Dodajemy kwadrans, żeby uzyskać równe zamknięcie przedziału (np 14:45 + 15 min = 15:00)
+              if (isQuarterHourly) {
+                  endMin += 15;
+                  if (endMin >= 60) { endHour += 1; endMin = 0; }
+              } else {
+                  endHour += 1; // Jeśli to pełne godziny, to okno np 14:00 kończy się o 15:00
+              }
+              
+              // Zabezpieczenie przed 24:00
+              if (endHour >= 24) endHour = 0;
+              bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+            }
+
+            if (avg > worstWindowAvgPrice) {
+              worstWindowAvgPrice = avg;
+              worstWindowStart = pricesArr[i].time;
+              
+              let endItem = pricesArr[i + elementsIn3Hours - 1];
+              let endHour = parseInt(endItem.time.split(':')[0]);
+              let endMin = parseInt(endItem.time.split(':')[1] || 0);
+              
+              if (isQuarterHourly) {
+                  endMin += 15;
+                  if (endMin >= 60) { endHour += 1; endMin = 0; }
+              } else {
+                  endHour += 1;
+              }
+              if (endHour >= 24) endHour = 0;
+              worstWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+            }
+          }
+          
+          todayForecast = { 
+            bestWindowStart, bestWindowEnd, bestWindowAvgPrice, 
+            worstWindowStart, worstWindowEnd, worstWindowAvgPrice,
+            absoluteMinPrice, absoluteMaxPrice,
+            date: todayStr, prices: pricesArr 
+          };
+
         } else {
            forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}. (Brak danych w bazie giełdy)`;
         }
@@ -328,16 +393,25 @@ export default async function Home({ searchParams }) {
 
                 <div style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
                   
+                  {/* --- NOWE, 3-GODZINNE ZAKRESY --- */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                     <div>
-                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🟢 Najlepszy moment na pranie</p>
-                      <p style={{ margin: 0, fontSize: '2.8rem', fontWeight: '900', color: '#10b981' }}>{todayForecast.bestHour}</p>
-                      <p style={{ margin: '5px 0 0 0', color: '#059669', fontSize: '0.95rem', fontWeight: '500' }}>Cena zaledwie: {todayForecast.minPrice.toFixed(2)} PLN/kWh</p>
+                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🟢 Najtańsze okno (3 godz.)</p>
+                      <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981', whiteSpace: 'nowrap' }}>
+                         {todayForecast.bestWindowStart} - {todayForecast.bestWindowEnd}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', color: '#059669', fontSize: '0.95rem', fontWeight: '500' }}>
+                         Średnia cena: {todayForecast.bestWindowAvgPrice.toFixed(2)} PLN/kWh
+                      </p>
                     </div>
                     <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
-                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🔴 Unikaj wysokiego zużycia</p>
-                      <p style={{ margin: 0, fontSize: '2.8rem', fontWeight: '900', color: '#ef4444' }}>{todayForecast.worstHour}</p>
-                      <p style={{ margin: '5px 0 0 0', color: '#b91c1c', fontSize: '0.95rem', fontWeight: '500' }}>Cena aż: {todayForecast.maxPrice.toFixed(2)} PLN/kWh</p>
+                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🔴 Unikaj dużego zużycia</p>
+                      <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444', whiteSpace: 'nowrap' }}>
+                         {todayForecast.worstWindowStart} - {todayForecast.worstWindowEnd}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', color: '#b91c1c', fontSize: '0.95rem', fontWeight: '500' }}>
+                         Średnia cena aż: {todayForecast.worstWindowAvgPrice.toFixed(2)} PLN/kWh
+                      </p>
                     </div>
                   </div>
 
@@ -393,10 +467,10 @@ export default async function Home({ searchParams }) {
                     
                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
                       {todayForecast.prices.map((item, i) => {
-                        const range = (todayForecast.maxPrice - todayForecast.minPrice) || 1;
-                        const barHeight = Math.max(10, ((item.price - todayForecast.minPrice) / range) * 120);
-                        const isMin = item.price === todayForecast.minPrice;
-                        const isMax = item.price === todayForecast.maxPrice;
+                        const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
+                        const barHeight = Math.max(10, ((item.price - todayForecast.absoluteMinPrice) / range) * 120);
+                        const isMin = item.price === todayForecast.absoluteMinPrice;
+                        const isMax = item.price === todayForecast.absoluteMaxPrice;
                         const isFullHour = item.time.endsWith('00');
                         
                         return (
