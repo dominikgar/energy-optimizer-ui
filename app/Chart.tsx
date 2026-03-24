@@ -1,37 +1,88 @@
 // @ts-nocheck
-"use client";
+'use client';
 
-import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  ComposedChart
+} from 'recharts';
 
 export default function Chart({ data }) {
+  if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
+
   return (
-    <div style={{ height: '450px', width: '100%', color: 'black' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="colorKwh" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8884d8" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-          <XAxis 
-            dataKey="label" 
-            stroke="#888" 
-            tick={{ fill: '#888', fontSize: 12 }}
-            tickMargin={10}
-            minTickGap={40}
-          />
-          <YAxis yAxisId="left" stroke="#888" tick={{ fill: '#888' }} axisLine={false} tickLine={false} />
-          <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" tick={{ fill: '#82ca9d' }} axisLine={false} tickLine={false} />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#333', color: '#fff', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
-            itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-          />
-          <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
+    <div style={{ width: '100%', height: '400px' }}>
+      <ResponsiveContainer>
+        <ComposedChart
+          data={data}
+          margin={{
+            top: 20,
+            right: 20,
+            bottom: 20,
+            left: 0,
+          }}
+        >
+          {/* Jasnoszara siatka */}
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           
-          <Area yAxisId="left" type="monotone" dataKey="kwh" stroke="#8884d8" strokeWidth={2} fillOpacity={1} fill="url(#colorKwh)" name="Zużycie (kWh)" />
-          <Line yAxisId="right" type="stepAfter" dataKey="price" stroke="#82ca9d" name="Cena (PLN/kWh)" strokeWidth={2} dot={false} />
+          <XAxis 
+            dataKey="time" 
+            stroke="#94a3b8" 
+            fontSize={12}
+            tickMargin={10}
+            axisLine={false}
+            tickLine={false}
+          />
+          
+          {/* Lewa oś dla Zużycia (kWh) */}
+          <YAxis 
+            yAxisId="left" 
+            stroke="#94a3b8" 
+            fontSize={12}
+            tickFormatter={(val) => `${val} kWh`}
+            axisLine={false}
+            tickLine={false}
+          />
+          
+          {/* Prawa oś dla Ceny (PLN) */}
+          <YAxis 
+            yAxisId="right" 
+            orientation="right" 
+            stroke="#10b981" 
+            fontSize={12}
+            tickFormatter={(val) => `${val.toFixed(2)} zł`}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          {/* Jasny Tooltip */}
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+            itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+            labelStyle={{ color: '#64748b', marginBottom: '5px' }}
+          />
+
+          {/* Słupki Zużycia (Szaro-niebieskie) */}
+          <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+          
+          {/* Linia Ceny (Złota/Zielona) */}
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="price"
+            name="Cena (PLN/kWh)"
+            stroke="#10b981"
+            strokeWidth={3}
+            dot={false}
+            activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
