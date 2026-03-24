@@ -44,12 +44,9 @@ export default async function Home({ searchParams }) {
   let forecastError = null; 
   
   try {
-    // KULOODPORNE GENEROWANIE DATY:
-    // 1. Zmuszamy Vercela do pobrania czasu w polskiej strefie czasowej (żeby ominąć amerykański czas serwera)
     const now = new Date();
     const polandTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
     
-    // 2. Ręcznie sklejamy datę, wymuszając dodanie zera (np. "03" zamiast "3") - serwer PSE to pokocha!
     const year = polandTime.getFullYear();
     const month = String(polandTime.getMonth() + 1).padStart(2, '0');
     const day = String(polandTime.getDate()).padStart(2, '0');
@@ -57,7 +54,6 @@ export default async function Home({ searchParams }) {
     
     const targetUrl = `https://api.raporty.pse.pl/api/rce-pln?$filter=doba%20eq%20'${todayStr}'`;
     
-    // Dodajemy nagłówek "Accept", żeby upewnić się, że PSE wie, że chcemy czyste dane JSON
     const pseRes = await fetch(targetUrl, { 
       cache: 'no-store',
       headers: { 'Accept': 'application/json' }
@@ -175,7 +171,7 @@ export default async function Home({ searchParams }) {
       <div style={{ marginBottom: '3rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
           <span style={{ backgroundColor: '#eab308', color: '#422006', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Funkcja Premium</span>
-          <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#fff' }}>Plan na dziś ({new Date().toLocaleDateString('pl-PL')})</h2>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#fff' }}>Plan na dziś</h2>
         </div>
 
         {todayForecast ? (
@@ -249,3 +245,20 @@ export default async function Home({ searchParams }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
             <div style={{ padding: '1.5rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '16px' }}>
               <h4 style={{ color: '#ef4444', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚠️</span> Twój historyczny wampir
+              </h4>
+              <p style={{ margin: 0, color: '#e5e5e5', lineHeight: '1.5', fontSize: '0.95rem' }}>
+                Zazwyczaj przepalałeś najwięcej pieniędzy w okolicach godziny <strong>{insights.worstHour}:00</strong>. Pilnuj tego czasu, jeśli widzisz na naszym radarze wysoką cenę prądu!
+              </p>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: '#141414', padding: '2rem', borderRadius: '24px', border: '1px solid #222', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#ddd', fontWeight: '500' }}>Szczegółowy profil zużycia</h2>
+            <Chart data={chartData} />
+          </div>
+        </>
+      )}
+    </main>
+  );
+}
