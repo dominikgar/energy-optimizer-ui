@@ -22,7 +22,13 @@ export default async function Home({ searchParams }) {
   const globalStyles = `
     .app-wrapper { padding: 2rem 3rem; }
     .hero-title { font-size: 4.5rem; }
-    .tabs-row { flex-wrap: wrap; }
+    
+    /* Klasy do obsługi Menu Desktop vs Mobile */
+    .desktop-tabs { display: flex; gap: 2rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 3rem; flex-wrap: wrap; }
+    .mobile-menu-container { display: none; }
+    details.mobile-nav > summary { list-style: none; outline: none; }
+    details.mobile-nav > summary::-webkit-details-marker { display: none; }
+
     .chart-scroll-box { overflow-x: visible; width: 100%; }
     .chart-flex-box { min-width: auto; }
     .hide-on-mobile { display: block; }
@@ -46,8 +52,11 @@ export default async function Home({ searchParams }) {
     @media (max-width: 768px) {
       .app-wrapper { padding: 1.5rem 1rem !important; }
       .hero-title { font-size: 2.5rem !important; }
-      .tabs-row { flex-wrap: nowrap !important; overflow-x: auto !important; padding-bottom: 10px !important; -webkit-overflow-scrolling: touch; }
-      .tabs-row::-webkit-scrollbar { display: none; }
+      
+      /* Przełączenie na Burger Menu */
+      .desktop-tabs { display: none !important; }
+      .mobile-menu-container { display: block !important; margin-bottom: 2rem; position: relative; z-index: 50; }
+
       .chart-scroll-box { overflow-x: auto !important; padding-bottom: 15px !important; -webkit-overflow-scrolling: touch; }
       .chart-flex-box { min-width: 600px !important; }
       .hide-on-mobile { display: none !important; }
@@ -436,8 +445,8 @@ export default async function Home({ searchParams }) {
           </div>
         </header>
 
-        {/* SYSTEM ZAKŁADEK (TABS) */}
-        <div className="tabs-row" style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #e2e8f0', marginBottom: '3rem' }}>
+        {/* SYSTEM ZAKŁADEK (TABS) - WERSJA DESKTOP */}
+        <div className="desktop-tabs">
           <Link 
             href={`/?tab=radar&days=${days}`} 
             scroll={false} 
@@ -484,12 +493,38 @@ export default async function Home({ searchParams }) {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              marginLeft: 'auto' // Wypycha ten przycisk na prawo
+              marginLeft: 'auto'
             }}
           >
             Automatyzacje API
             <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>WKRÓTCE</span>
           </Link>
+        </div>
+
+        {/* SYSTEM ZAKŁADEK (BURGER MENU) - WERSJA MOBILNA */}
+        <div className="mobile-menu-container">
+          <details className="mobile-nav" style={{ width: '100%' }}>
+            <summary style={{ backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold', color: '#0f172a', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.2rem' }}>☰</span> 
+                Menu: {activeTab === 'radar' ? 'Radar na dziś' : activeTab === 'history' ? 'Profil Historyczny' : 'Automatyzacje API'}
+              </div>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>▼</span>
+            </summary>
+            <div style={{ position: 'absolute', top: '100%', left: '0', right: '0', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginTop: '0.5rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <Link href={`/?tab=radar&days=${days}`} scroll={false} style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9', textDecoration: 'none', color: activeTab === 'radar' ? '#10b981' : '#334155', fontWeight: activeTab === 'radar' ? 'bold' : 'normal', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                Radar na dziś
+                <span style={{ backgroundColor: '#10b981', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>
+              </Link>
+              <Link href={`/?tab=history&days=${days}`} scroll={false} style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9', textDecoration: 'none', color: activeTab === 'history' ? '#3b82f6' : '#334155', fontWeight: activeTab === 'history' ? 'bold' : 'normal' }}>
+                Profil Historyczny
+              </Link>
+              <Link href={`/?tab=api&days=${days}`} scroll={false} style={{ padding: '1.2rem 1.5rem', textDecoration: 'none', color: activeTab === 'api' ? '#a855f7' : '#334155', fontWeight: activeTab === 'api' ? 'bold' : 'normal', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                Automatyzacje API
+                <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>WKRÓTCE</span>
+              </Link>
+            </div>
+          </details>
         </div>
         
         {/* ========================================= */}
