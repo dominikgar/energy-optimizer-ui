@@ -20,6 +20,7 @@ export default async function Home({ searchParams }) {
 
   // --- STYLE GLOBALNE RESPONSOWNE DLA URZĄDZEŃ MOBILNYCH ---
   const globalStyles = `
+    * { box-sizing: border-box; }
     .app-wrapper { padding: 2rem 3rem; }
     .hero-title { font-size: 4.5rem; }
     
@@ -136,7 +137,8 @@ export default async function Home({ searchParams }) {
                 </div>
               </div>
 
-              <div className="mobile-card-padding" style={{ flex: '1 1 300px', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+              {/* POPRAWKA: Dodano minWidth: 0 oraz maxWidth: '100%' dla naprawienia szerokości na mobile */}
+              <div className="mobile-card-padding" style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '10px' }}>
                     <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Wyłącznie w wersji PRO</span>
                     <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500' }}>Przykładowy radar dzienny</span>
@@ -155,7 +157,7 @@ export default async function Home({ searchParams }) {
                  
                  <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby</p>
                  
-                 {/* RESPONSIVNY KONTENER DLA MAKIETY WYKRESU (POPRAWIONE ETYKIETY) */}
+                 {/* RESPONSIVNY KONTENER DLA MAKIETY WYKRESU */}
                  <div className="chart-scroll-box">
                    <div className="chart-flex-box" style={{ display: 'flex', flexDirection: 'column' }}>
                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
@@ -603,30 +605,37 @@ export default async function Home({ searchParams }) {
                     
                     {/* RESPONSIVNY KONTENER WYKRESU */}
                     <div className="chart-scroll-box">
-                      <div className="chart-flex-box" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
-                        {todayForecast.prices.map((item, i) => {
-                          const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
-                          const barHeight = Math.max(10, ((item.price - todayForecast.absoluteMinPrice) / range) * 120);
-                          const isMin = item.price === todayForecast.absoluteMinPrice;
-                          const isMax = item.price === todayForecast.absoluteMaxPrice;
-                          const isFullHour = item.time.endsWith('00');
-                          
-                          return (
-                            <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', marginBottom: '4px', display: 'block', minHeight: '15px' }}>
-                                {isMin || isMax ? item.price.toFixed(2) : ''}
-                              </span>
-                              <div className="chart-bar-fill" style={{ width: '90%', maxWidth: '8px', minWidth: '2px', height: `${barHeight}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '2px 2px 0 0', opacity: isMin || isMax ? 1 : 0.7, transition: 'opacity 0.2s, filter 0.2s' }}></div>
-                              <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
-                                <strong style={{ color: isMin ? '#34d399' : isMax ? '#fca5a5' : '#93c5fd' }}>{item.time}</strong><br/>
-                                {item.price.toFixed(2)} PLN
+                      <div className="chart-flex-box" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
+                          {todayForecast.prices.map((item, i) => {
+                            const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
+                            const barHeight = Math.max(10, ((item.price - todayForecast.absoluteMinPrice) / range) * 120);
+                            const isMin = item.price === todayForecast.absoluteMinPrice;
+                            const isMax = item.price === todayForecast.absoluteMaxPrice;
+                            const isFullHour = item.time.endsWith('00');
+                            
+                            return (
+                              <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', marginBottom: '4px', display: 'block', minHeight: '15px' }}>
+                                  {isMin || isMax ? item.price.toFixed(2) : ''}
+                                </span>
+                                <div className="chart-bar-fill" style={{ width: '90%', maxWidth: '8px', minWidth: '2px', height: `${barHeight}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '2px 2px 0 0', opacity: isMin || isMax ? 1 : 0.7, transition: 'opacity 0.2s, filter 0.2s' }}></div>
+                                <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
+                                  <strong style={{ color: isMin ? '#34d399' : isMax ? '#fca5a5' : '#93c5fd' }}>{item.time}</strong><br/>
+                                  {item.price.toFixed(2)} PLN
+                                </div>
+                                <span style={{ fontSize: '0.6rem', marginTop: '4px', display: 'block', minHeight: '14px', color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#94a3b8' : 'transparent' }}>
+                                  {item.time.split(':')[0]}
+                                </span>
                               </div>
-                              <span style={{ fontSize: '0.6rem', marginTop: '4px', display: 'block', minHeight: '14px', color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#94a3b8' : 'transparent' }}>
-                                {item.time.split(':')[0]}
-                              </span>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500', padding: '0 5px' }}>
+                           <span>00:00</span>
+                           <span>12:00</span>
+                           <span>23:00</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -787,7 +796,7 @@ export default async function Home({ searchParams }) {
                 </div>
                 
                 {/* WIZUALIZACJA ODPOWIEDZI JSON */}
-                <div className="chart-scroll-box" style={{ flex: '1 1 350px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+                <div className="chart-scroll-box" style={{ flex: '1 1 350px', minWidth: 0, maxWidth: '100%', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
