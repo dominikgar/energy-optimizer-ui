@@ -16,6 +16,7 @@ const pool = new Pool({
 export default async function Home({ searchParams }) {
   const { userId } = auth();
 
+  // --- EKRAN DLA NIEZALOGOWANYCH ---
   if (!userId) {
     return (
       <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
@@ -50,9 +51,9 @@ export default async function Home({ searchParams }) {
                 <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych.</p>
               </div>
               <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💡</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Konkretne wnioski</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Nie tylko pokazujemy dane. Podpowiadamy, z jakich godzin powinieneś zrezygnować, a w jakich włączać zmywarkę.</p>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
+                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Prognoza na dziś (Premium)</h3>
+                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
               </div>
             </div>
           </div>
@@ -61,6 +62,42 @@ export default async function Home({ searchParams }) {
     );
   }
 
+  // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
+  let todayForecast = null;
+  try {
+    // Generujemy dzisiejszą datę w formacie YYYY-MM-DD z uwzględnieniem strefy czasowej
+    const today = new Date();
+    const todayStr = today.toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }); 
+    
+    // Odpytujemy bezpośrednio rządowe API
+    const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '${todayStr}'`, { next: { revalidate: 3600 } });
+    
+    if (pseRes.ok) {
+      const pseJson = await pseRes.json();
+      if (pseJson.value && pseJson.value.length > 0) {
+        let minPrice = 9999;
+        let maxPrice = -9999;
+        let bestHour = '';
+        let worstHour = '';
+        
+        pseJson.value.forEach(row => {
+          const priceKwh = row.rce_pln / 1000;
+          // Wyciągamy godzinę z formatu "YYYY-MM-DD HH:MM:SS" lub "YYYY-MM-DD HH:MM"
+          const hourParts = row.udtczas.split(' ');
+          const hour = hourParts.length > 1 ? hourParts[1].substring(0, 5) : '??:??';
+          
+          if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
+          if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
+        });
+        
+        todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr };
+      }
+    }
+  } catch (e) {
+    console.error("Nie udało się pobrać cen na dziś z PSE", e);
+  }
+
+  // --- 2. DANE HISTORYCZNE Z BAZY (LUSTERKO WSTECZNE) ---
   const days = parseInt(searchParams?.days) || 3;
   const hoursLimit = days * 24;
 
@@ -83,7 +120,6 @@ export default async function Home({ searchParams }) {
       LIMIT $2
     `, [userId, hoursLimit]); 
 
-    // Grupowanie godzin do analizy nawyków
     const hourlyAggregation = Array(24).fill(null).map(() => ({ cost: 0, priceSum: 0, count: 0 }));
 
     chartData = rows.reverse().map(row => {
@@ -92,7 +128,6 @@ export default async function Home({ searchParams }) {
       const timestamp = new Date(row.timestamp);
       const hourOfDay = timestamp.getHours();
 
-      // Zbieramy dane do agregacji
       hourlyAggregation[hourOfDay].cost += (kwh * price);
       hourlyAggregation[hourOfDay].priceSum += price;
       hourlyAggregation[hourOfDay].count += 1;
@@ -110,7 +145,6 @@ export default async function Home({ searchParams }) {
     stats.kwh = chartData.reduce((sum, curr) => sum + curr.kwh, 0);
     stats.savings = stats.cost * 0.115;
 
-    // Szukamy najlepszej i najgorszej godziny
     hourlyAggregation.forEach((data, hour) => {
       if (data.count > 0) {
         if (data.cost > insights.worstCost) {
@@ -142,12 +176,46 @@ export default async function Home({ searchParams }) {
 
   return (
     <main style={{ padding: '3rem', fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+      
+      {/* SEKCJA 1: RADAR NA DZIŚ (PREMIUM) */}
+      <div style={{ marginBottom: '3rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+          <span style={{ backgroundColor: '#eab308', color: '#422006', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Funkcja Premium</span>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#fff' }}>Plan na dziś ({new Date().toLocaleDateString('pl-PL')})</h2>
+        </div>
+
+        {todayForecast ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', borderRadius: '24px', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)' }}>
+            
+            <div>
+              <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🟢 Najlepszy moment na pranie</p>
+              <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981' }}>{todayForecast.bestHour}</p>
+              <p style={{ margin: '5px 0 0 0', color: '#6ee7b7', fontSize: '0.9rem' }}>Cena zaledwie: {todayForecast.minPrice.toFixed(2)} PLN/kWh</p>
+            </div>
+
+            <div style={{ borderLeft: '1px solid #333', paddingLeft: '1.5rem' }}>
+              <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🔴 Unikaj wysokiego zużycia</p>
+              <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444' }}>{todayForecast.worstHour}</p>
+              <p style={{ margin: '5px 0 0 0', color: '#fca5a5', fontSize: '0.9rem' }}>Cena aż: {todayForecast.maxPrice.toFixed(2)} PLN/kWh</p>
+            </div>
+
+          </div>
+        ) : (
+          <div style={{ padding: '2rem', backgroundColor: '#18181b', borderRadius: '20px', border: '1px dashed #333', color: '#888' }}>
+            Ładowanie najnowszych cen giełdowych PSE... (Odśwież stronę za moment)
+          </div>
+        )}
+      </div>
+
+      <hr style={{ borderColor: '#222', borderBottom: 'none', marginBottom: '3rem' }} />
+
+      {/* SEKCJA 2: LUSTERKO WSTECZNE (DANE Z PLIKU) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '0.2rem', margin: 0, background: 'linear-gradient(to right, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            ⚡ Twój Profil Zużycia
-          </h1>
-          <p style={{ color: '#888', margin: '0.5rem 0 0' }}>Inteligentna analiza nawyków</p>
+          <h2 style={{ fontSize: '2rem', marginBottom: '0.2rem', margin: 0, color: '#fff' }}>
+            Twój Profil Historyczny
+          </h2>
+          <p style={{ color: '#888', margin: '0.5rem 0 0' }}>Analiza Twoich poprzednich rachunków</p>
         </div>
         
         <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: '#1a1a1a', padding: '0.4rem', borderRadius: '30px', border: '1px solid #333' }}>
@@ -181,22 +249,13 @@ export default async function Home({ searchParams }) {
             </div>
           </div>
 
-          {/* NOWA SEKCJA WNIOSKÓW (ACTIONABLE INSIGHTS) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
             <div style={{ padding: '1.5rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '16px' }}>
               <h4 style={{ color: '#ef4444', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚠️</span> Twój Wampir Energetyczny
+                <span>⚠️</span> Twój historyczny wampir
               </h4>
               <p style={{ margin: 0, color: '#e5e5e5', lineHeight: '1.5', fontSize: '0.95rem' }}>
-                Twój najdroższy czas to okolice godziny <strong>{insights.worstHour}:00</strong>. Przez wybrane dni zapłaciłeś wtedy najwięcej ({insights.worstCost.toFixed(2)} PLN). Spróbuj unikać energochłonnych zadań w tym czasie!
-              </p>
-            </div>
-            <div style={{ padding: '1.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '16px' }}>
-              <h4 style={{ color: '#3b82f6', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>✅</span> Złote Okno Oszczędności
-              </h4>
-              <p style={{ margin: 0, color: '#e5e5e5', lineHeight: '1.5', fontSize: '0.95rem' }}>
-                W Twoim profilu prąd jest najtańszy w okolicach godziny <strong>{insights.bestHour}:00</strong> (średnio {insights.bestPrice.toFixed(2)} PLN/kWh). To idealny moment na opóźniony start pralki, zmywarki lub grzanie wody!
+                Zazwyczaj przepalałeś najwięcej pieniędzy w okolicach godziny <strong>{insights.worstHour}:00</strong>. Pilnuj tego czasu, jeśli widzisz na naszym radarze wysoką cenę prądu!
               </p>
             </div>
           </div>
