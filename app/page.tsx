@@ -472,7 +472,7 @@ export default async function Home({ searchParams }) {
                     </p>
                     <form action="/api/checkout_sessions" method="POST">
                        <button type="submit" style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}>
-                        Odblokuj za 9.99 PLN / miesiąc
+                        Odblokuj za 14.99 PLN / miesiąc
                        </button>
                     </form>
                   </div>
@@ -714,7 +714,7 @@ export default async function Home({ searchParams }) {
                   <button style={{ padding: '12px 24px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                     Zapisz się na listę Early Access
                   </button>
-                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '1rem' }}>* Przewidywany koszt abonamentu API: od 49.99 PLN/msc.</p>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '1rem' }}>* Przewidywany koszt abonamentu API: 14.99 PLN/msc.</p>
                 </div>
                 
                 <div style={{ flex: '1 1 400px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
