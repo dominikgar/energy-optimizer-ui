@@ -573,10 +573,16 @@ export default async function Home({ searchParams }) {
                     <h3 style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Zużycie energii</h3>
                     <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#0f172a' }}>{stats.kwh.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal'}}>kWh</span></p>
                   </div>
-                  <div style={{ padding: '2rem', backgroundColor: '#dcfce7', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.1)' }}>
+                  
+                  {/* ZMODYFIKOWANY KAFELEK: POTENCJAŁ OSZCZĘDNOŚCI (DODANO WYJAŚNIENIE) */}
+                  <div style={{ padding: '2rem', backgroundColor: '#dcfce7', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <h3 style={{ margin: 0, color: '#059669', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Potencjał Oszczędności</h3>
-                    <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#047857' }}>~ {stats.savings.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#10b981', fontWeight: 'normal'}}>PLN</span></p>
+                    <p style={{ margin: '15px 0 10px 0', fontSize: '2.8rem', fontWeight: '800', color: '#047857' }}>~ {stats.savings.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#10b981', fontWeight: 'normal'}}>PLN</span></p>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#065f46', lineHeight: '1.4' }}>
+                      Szacowana kwota, którą zatrzymasz w portfelu, uruchamiając pralkę lub zmywarkę tylko w najtańszych "zielonych oknach" z naszego radaru.
+                    </p>
                   </div>
+
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
