@@ -71,15 +71,25 @@ export default async function Home({ searchParams }) {
         pseJson.value.forEach(row => {
           const priceKwh = row.rce_pln / 1000;
           
-          // KULOODPORNE WYCIĄGANIE GODZINY
-          const timeStr = String(row.udtczas || row.udtczas_oreb || '');
+          // INTELIGENTNY DEKODER CZASU Z PSE
           let hour = '??:??';
-          const timeMatch = timeStr.match(/(\d{2}:\d{2})/); // Szuka formatu HH:MM obojętnie gdzie jest
-          
-          if (timeMatch) {
-            hour = timeMatch[1];
-          } else if (row.godzina) {
+          if (row.godzina !== undefined) {
             hour = String(row.godzina).padStart(2, '0') + ':00';
+          } else if (row.okres !== undefined) {
+            const o = parseInt(row.okres);
+            if (o > 25) { // 15-minutowe interwały (1-96)
+              const h = Math.floor((o - 1) / 4);
+              const m = ((o - 1) % 4) * 15;
+              hour = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+            } else { // Wersja godzinowa
+              hour = String(o - 1).padStart(2, '0') + ':00';
+            }
+          } else if (row.udtczas || row.udtczas_oreb || row.data_czas) {
+            const timeStr = String(row.udtczas || row.udtczas_oreb || row.data_czas || '');
+            const match = timeStr.match(/(\d{2}:\d{2})/);
+            if (match) hour = match[1];
+          } else {
+            hour = Object.keys(row).join(', ').substring(0, 15); // Wypluj nazwy kolumn do debugowania
           }
           
           if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
@@ -102,15 +112,24 @@ export default async function Home({ searchParams }) {
               fallbackJson.value.forEach(row => {
                 const priceKwh = row.rce_pln / 1000;
                 
-                // KULOODPORNE WYCIĄGANIE GODZINY
-                const timeStr = String(row.udtczas || row.udtczas_oreb || '');
                 let hour = '??:??';
-                const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
-                
-                if (timeMatch) {
-                  hour = timeMatch[1];
-                } else if (row.godzina) {
+                if (row.godzina !== undefined) {
                   hour = String(row.godzina).padStart(2, '0') + ':00';
+                } else if (row.okres !== undefined) {
+                  const o = parseInt(row.okres);
+                  if (o > 25) { 
+                    const h = Math.floor((o - 1) / 4);
+                    const m = ((o - 1) % 4) * 15;
+                    hour = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+                  } else {
+                    hour = String(o - 1).padStart(2, '0') + ':00';
+                  }
+                } else if (row.udtczas || row.udtczas_oreb || row.data_czas) {
+                  const timeStr = String(row.udtczas || row.udtczas_oreb || row.data_czas || '');
+                  const match = timeStr.match(/(\d{2}:\d{2})/);
+                  if (match) hour = match[1];
+                } else {
+                  hour = Object.keys(row).join(', ').substring(0, 15);
                 }
                 
                 if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
