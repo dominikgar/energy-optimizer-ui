@@ -99,7 +99,8 @@ export async function GET() {
         
         let endItem = pricesArr[i + elementsIn3Hours - 1]; 
         let endHour = parseInt(endItem.time.split(':')[0]);
-        let endMin = parseInt(endItem.time.split(':')[1] || 0);
+        // Poprawka typu - fallback do wartości tekstowej '0' dla TS
+        let endMin = parseInt(endItem.time.split(':')[1] || '0', 10);
         
         if (isQuarterHourly) {
             endMin += 15;
