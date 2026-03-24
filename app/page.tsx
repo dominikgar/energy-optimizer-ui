@@ -35,29 +35,6 @@ export default async function Home({ searchParams }) {
             </button>
           </SignInButton>
         </div>
-
-        <div style={{ backgroundColor: '#111', padding: '5rem 2rem', borderTop: '1px solid #222', borderBottom: '1px solid #222' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#fff', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Analityka 15-minutowa</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Łączymy Twoje dane od operatora z oficjalnymi cenami PSE. Zobaczysz dokładny koszt każdego kwadransa.</p>
-              </div>
-              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych.</p>
-              </div>
-              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Prognoza na dziś (Premium)</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     );
   }
@@ -265,7 +242,6 @@ export default async function Home({ searchParams }) {
         {todayForecast ? (
           <div style={{ background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', borderRadius: '24px', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)' }}>
             
-            {/* Najlepsza / Najgorsza godzina */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
               <div>
                 <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🟢 Najlepszy moment na pranie</p>
@@ -279,33 +255,54 @@ export default async function Home({ searchParams }) {
               </div>
             </div>
 
-            {/* NOWOŚĆ: Wykres Heatmapy Słupkowej (Mini-chart) - NAPRAWIONY DLA SERWERA */}
+            {/* ZAKTUALIZOWANA HEATMAPA */}
             <div style={{ paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
               <p style={{ margin: '0 0 1rem 0', color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '140px', overflowX: 'auto', paddingBottom: '10px', scrollbarWidth: 'thin' }}>
+              
+              {/* Ustawiono flex-wrap, żeby przy 96 kwadransach ściśniło się bez scrolla poziomego */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
                 {todayForecast.prices.map((item, i) => {
                   const range = (todayForecast.maxPrice - todayForecast.minPrice) || 1;
-                  const barHeight = Math.max(10, ((item.price - todayForecast.minPrice) / range) * 90);
+                  // Wysokość teraz max 120px (zostawiamy 60px luzu nad)
+                  const barHeight = Math.max(10, ((item.price - todayForecast.minPrice) / range) * 120);
                   const isMin = item.price === todayForecast.minPrice;
                   const isMax = item.price === todayForecast.maxPrice;
                   const isFullHour = item.time.endsWith('00');
                   
                   return (
-                    <div key={i} style={{ flex: '1', minWidth: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ fontSize: '0.65rem', fontWeight: isMin || isMax ? 'bold' : 'normal', color: isMin ? '#10b981' : isMax ? '#ef4444' : '#666', transform: 'rotate(-45deg)', marginBottom: '8px' }}>
-                        {item.price.toFixed(2)}
+                    <div key={i} style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                      
+                      {/* LICZBY POKAZUJĄ SIĘ TYLKO NAD MIN I MAX, reszta pusta */}
+                      <span style={{ 
+                        fontSize: '0.65rem', 
+                        fontWeight: 'bold', 
+                        color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', 
+                        marginBottom: '4px',
+                        display: 'block',
+                        minHeight: '15px' 
+                      }}>
+                        {isMin || isMax ? item.price.toFixed(2) : ''}
                       </span>
-                      {/* Usunięte problematyczne onMouseOver - czysty, statyczny wykres z dymkami title */}
+                      
                       <div style={{ 
-                        width: '100%', 
+                        width: '90%', 
+                        maxWidth: '8px', 
+                        minWidth: '2px', 
                         height: `${barHeight}px`, 
                         backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', 
-                        borderRadius: '4px 4px 0 0', 
+                        borderRadius: '2px 2px 0 0', 
                         opacity: isMin || isMax ? 1 : 0.6
                       }}
                       title={`Godzina ${item.time}: ${item.price.toFixed(2)} PLN`}
                       ></div>
-                      <span style={{ fontSize: '0.65rem', color: isFullHour ? '#888' : 'transparent' }}>
+                      
+                      {/* OŚ CZASU - Pokazuje tylko co czwartą godzinę (00:00, 04:00, 08:00 itd.) żeby uniknąć nakładania */}
+                      <span style={{ 
+                        fontSize: '0.6rem', 
+                        color: '#666', 
+                        marginTop: '4px',
+                        display: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? 'block' : 'none'
+                      }}>
                         {item.time.split(':')[0]}
                       </span>
                     </div>
@@ -330,7 +327,8 @@ export default async function Home({ searchParams }) {
 
       <hr style={{ borderColor: '#222', borderBottom: 'none', marginBottom: '3rem' }} />
 
-      {/* SEKCJA 2: LUSTERKO WSTECZNE (DANE Z PLIKU) */}
+      {/* SEKCJA 2: LUSTERKO WSTECZNE */}
+      {/* ... (ta część bez zmian) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
           <h2 style={{ fontSize: '2rem', marginBottom: '0.2rem', margin: 0, color: '#fff' }}>
