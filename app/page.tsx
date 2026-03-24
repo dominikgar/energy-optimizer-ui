@@ -112,7 +112,6 @@ export default async function Home({ searchParams }) {
           if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
           if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
           
-          // Zapisujemy cenę do tablicy do wykresu!
           pricesArr.push({ time: hour, price: priceKwh });
         });
         
@@ -280,18 +279,15 @@ export default async function Home({ searchParams }) {
               </div>
             </div>
 
-            {/* NOWOŚĆ: Wykres Heatmapy Słupkowej (Mini-chart) */}
+            {/* NOWOŚĆ: Wykres Heatmapy Słupkowej (Mini-chart) - NAPRAWIONY DLA SERWERA */}
             <div style={{ paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
               <p style={{ margin: '0 0 1rem 0', color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '140px', overflowX: 'auto', paddingBottom: '10px', scrollbarWidth: 'thin' }}>
                 {todayForecast.prices.map((item, i) => {
                   const range = (todayForecast.maxPrice - todayForecast.minPrice) || 1;
-                  // Obliczamy wysokość słupka od 10px do 100px
                   const barHeight = Math.max(10, ((item.price - todayForecast.minPrice) / range) * 90);
                   const isMin = item.price === todayForecast.minPrice;
                   const isMax = item.price === todayForecast.maxPrice;
-                  
-                  // Jeśli ceny są na dany kwadrans, podpiszemy tylko pełne godziny, żeby nie było tłoku
                   const isFullHour = item.time.endsWith('00');
                   
                   return (
@@ -299,17 +295,15 @@ export default async function Home({ searchParams }) {
                       <span style={{ fontSize: '0.65rem', fontWeight: isMin || isMax ? 'bold' : 'normal', color: isMin ? '#10b981' : isMax ? '#ef4444' : '#666', transform: 'rotate(-45deg)', marginBottom: '8px' }}>
                         {item.price.toFixed(2)}
                       </span>
+                      {/* Usunięte problematyczne onMouseOver - czysty, statyczny wykres z dymkami title */}
                       <div style={{ 
                         width: '100%', 
                         height: `${barHeight}px`, 
                         backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', 
                         borderRadius: '4px 4px 0 0', 
-                        opacity: isMin || isMax ? 1 : 0.4,
-                        transition: 'opacity 0.2s',
+                        opacity: isMin || isMax ? 1 : 0.6
                       }}
                       title={`Godzina ${item.time}: ${item.price.toFixed(2)} PLN`}
-                      onMouseOver={(e) => e.target.style.opacity = 1}
-                      onMouseOut={(e) => e.target.style.opacity = isMin || isMax ? 1 : 0.4}
                       ></div>
                       <span style={{ fontSize: '0.65rem', color: isFullHour ? '#888' : 'transparent' }}>
                         {item.time.split(':')[0]}
