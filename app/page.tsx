@@ -140,7 +140,7 @@ export default async function Home({ searchParams }) {
   const hoursLimit = days * 24;
 
   let chartData = [];
-  let stats = { cost: 0, kwh: 0, savings: 0 };
+  let stats = { cost: 0, kwh: 0, savings: 0, rangeText: '', lastSync: '' };
   let insights = { worstHour: 0, worstCost: 0, bestHour: 0, bestPrice: 999 };
 
   if (activeTab === 'history') {
@@ -149,19 +149,26 @@ export default async function Home({ searchParams }) {
         WITH hourly_prices AS (
             SELECT DATE_TRUNC('hour', timestamp) AS hour_ts, AVG(price_pln_mwh) AS price_mwh
             FROM energy_prices GROUP BY DATE_TRUNC('hour', timestamp)
-        )
-        SELECT c.timestamp, c.value_kwh, p.price_mwh
-        FROM energy_consumption c
-        JOIN hourly_prices p ON DATE_TRUNC('hour', c.timestamp) = p.hour_ts
-        WHERE (c.type ILIKE '%pobór%' OR c.type ILIKE '%pobor%') 
-        AND c.user_id = $1
-        ORDER BY c.timestamp DESC
-        LIMIT $2
-      `, [userId, hoursLimit]); 
+      )
+      SELECT c.timestamp, c.value_kwh, p.price_mwh
+      FROM energy_consumption c
+      JOIN hourly_prices p ON DATE_TRUNC('hour', c.timestamp) = p.hour_ts
+      WHERE (c.type ILIKE '%pobór%' OR c.type ILIKE '%pobor%') 
+      AND c.user_id = $1
+      ORDER BY c.timestamp DESC
+      LIMIT $2
+    `, [userId, hoursLimit]); 
+
+    if (rows.length > 0) {
+      const latestDate = new Date(rows[0].timestamp);
+      const earliestDate = new Date(rows[rows.length - 1].timestamp);
+      
+      stats.lastSync = latestDate.toLocaleString('pl-PL', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+      stats.rangeText = `${earliestDate.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })} — ${latestDate.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}`;
 
       const hourlyAggregation = Array(24).fill(null).map(() => ({ cost: 0, priceSum: 0, count: 0 }));
 
-      chartData = rows.reverse().map(row => {
+      chartData = [...rows].reverse().map(row => {
         const kwh = parseFloat(row.value_kwh);
         const price = parseFloat(row.price_mwh) / 1000;
         const timestamp = new Date(row.timestamp);
@@ -197,6 +204,7 @@ export default async function Home({ searchParams }) {
           }
         }
       });
+    }
       
     } catch (error) {
       console.error("Błąd bazy danych:", error);
@@ -269,6 +277,18 @@ export default async function Home({ searchParams }) {
       {/* ========================================= */}
       {activeTab === 'radar' && (
         <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ backgroundColor: '#eab308', color: '#422006', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Funkcja Premium</span>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#fff' }}>Plan na dziś</h2>
+            </div>
+            {todayForecast && (
+              <p style={{ margin: 0, color: '#888', fontSize: '0.9rem' }}>
+                📅 Dane PSE na dzień: <strong>{new Date(todayForecast.date).toLocaleDateString('pl-PL')}</strong>
+              </p>
+            )}
+          </div>
+
           {todayForecast ? (
             <div style={{ position: 'relative', borderRadius: '24px', overflow: 'hidden' }}>
               
@@ -314,9 +334,7 @@ export default async function Home({ searchParams }) {
                   </div>
                 </div>
 
-                {/* HEATMAPA Z WBUDOWANYMI CSS-OWYMI TOOLTIPAMI */}
                 <div style={{ paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
-                  
                   <style dangerouslySetInnerHTML={{__html: `
                     .chart-col { position: relative; cursor: crosshair; }
                     .chart-tooltip {
@@ -376,41 +394,15 @@ export default async function Home({ searchParams }) {
                       
                       return (
                         <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                          
-                          <span style={{ 
-                            fontSize: '0.65rem', 
-                            fontWeight: 'bold', 
-                            color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', 
-                            marginBottom: '4px',
-                            display: 'block',
-                            minHeight: '15px' 
-                          }}>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', marginBottom: '4px', display: 'block', minHeight: '15px' }}>
                             {isMin || isMax ? item.price.toFixed(2) : ''}
                           </span>
-                          
-                          <div className="chart-bar-fill" style={{ 
-                            width: '90%', 
-                            maxWidth: '8px', 
-                            minWidth: '2px', 
-                            height: `${barHeight}px`, 
-                            backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', 
-                            borderRadius: '2px 2px 0 0', 
-                            opacity: isMin || isMax ? 1 : 0.6,
-                            transition: 'opacity 0.2s, filter 0.2s'
-                          }}></div>
-                          
+                          <div className="chart-bar-fill" style={{ width: '90%', maxWidth: '8px', minWidth: '2px', height: `${barHeight}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#3b82f6', borderRadius: '2px 2px 0 0', opacity: isMin || isMax ? 1 : 0.6, transition: 'opacity 0.2s, filter 0.2s' }}></div>
                           <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
                             <strong style={{ color: isMin ? '#10b981' : isMax ? '#fca5a5' : '#60a5fa' }}>{item.time}</strong><br/>
                             {item.price.toFixed(2)} PLN
                           </div>
-
-                          <span style={{ 
-                            fontSize: '0.6rem', 
-                            marginTop: '4px',
-                            display: 'block',
-                            minHeight: '14px',
-                            color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#888' : 'transparent'
-                          }}>
+                          <span style={{ fontSize: '0.6rem', marginTop: '4px', display: 'block', minHeight: '14px', color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#888' : 'transparent' }}>
                             {item.time.split(':')[0]}
                           </span>
                         </div>
@@ -418,7 +410,9 @@ export default async function Home({ searchParams }) {
                     })}
                   </div>
                 </div>
-
+                <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '1.5rem', textAlign: 'center', fontStyle: 'italic' }}>
+                  Info: Ceny na kolejny dzień publikowane są przez PSE codziennie ok. godziny 14:00.
+                </p>
               </div>
             </div>
           ) : (
@@ -442,11 +436,11 @@ export default async function Home({ searchParams }) {
         <div style={{ animation: 'fadeIn 0.3s ease' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
             <div>
-              <p style={{ color: '#888', margin: '0.5rem 0 0' }}>Wgraj dane, aby zobaczyć analizę poprzednich rachunków</p>
+              <h2 style={{ fontSize: '1.8rem', color: '#fff', margin: 0 }}>Twoja Historia Zużycia</h2>
+              <p style={{ color: '#888', margin: '5px 0 0' }}>Analiza wgranych danych z Twojego licznika</p>
             </div>
             
             <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: '#1a1a1a', padding: '0.4rem', borderRadius: '30px', border: '1px solid #333' }}>
-              {/* DODANE scroll={false} -> Rozwiązuje problem "skakania" do góry */}
               <Link href={`/?tab=history&days=3`} scroll={false} style={getBtnStyle(3)}>3 Dni</Link>
               <Link href={`/?tab=history&days=7`} scroll={false} style={getBtnStyle(7)}>7 Dni</Link>
               <Link href={`/?tab=history&days=30`} scroll={false} style={getBtnStyle(30)}>30 Dni</Link>
@@ -458,21 +452,33 @@ export default async function Home({ searchParams }) {
           {chartData.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: '#141414', borderRadius: '20px', border: '1px dashed #333', marginTop: '2rem' }}>
               <h2 style={{ color: '#fff' }}>Brak danych w bazie</h2>
-              <p style={{ color: '#888' }}>Użyj przycisku wyżej, aby wgrać swój plik CSV z Taurona i wygenerować wykresy.</p>
+              <p style={{ color: '#888' }}>Użyj przycisku wyżej, aby wgrać swój plik CSV z Taurona.</p>
             </div>
           ) : (
             <div style={{ marginTop: '2rem' }}>
+              {/* NOWA INFORMACJA O ZAKRESIE DAT I OSTATNIEJ SYNCHRONIZACJI */}
+              <div style={{ marginBottom: '2rem', padding: '1rem 1.5rem', backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                   <span style={{ color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Zakres analizy:</span>
+                   <p style={{ margin: 0, fontSize: '1.1rem', color: '#3b82f6', fontWeight: 'bold' }}>{stats.rangeText}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                   <span style={{ color: '#888', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Ostatnie dane z licznika:</span>
+                   <p style={{ margin: 0, fontSize: '1.1rem', color: '#10b981', fontWeight: 'bold' }}>{stats.lastSync}</p>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
                 <div style={{ padding: '2rem', backgroundColor: '#141414', borderRadius: '20px', border: '1px solid #222', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
-                  <h3 style={{ margin: 0, color: '#888', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Koszt ({days} dni)</h3>
+                  <h3 style={{ margin: 0, color: '#888', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Koszt w tym okresie</h3>
                   <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#fff' }}>{stats.cost.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#666', fontWeight: 'normal'}}>PLN</span></p>
                 </div>
                 <div style={{ padding: '2rem', backgroundColor: '#141414', borderRadius: '20px', border: '1px solid #222', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
-                  <h3 style={{ margin: 0, color: '#888', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Zużycie</h3>
+                  <h3 style={{ margin: 0, color: '#888', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Zużycie energii</h3>
                   <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#fff' }}>{stats.kwh.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#666', fontWeight: 'normal'}}>kWh</span></p>
                 </div>
                 <div style={{ padding: '2rem', backgroundImage: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)', borderRadius: '20px', border: '1px solid #065f46', boxShadow: '0 10px 30px rgba(6, 78, 59, 0.2)' }}>
-                  <h3 style={{ margin: 0, color: '#34d399', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Potencjał Optymalizacji</h3>
+                  <h3 style={{ margin: 0, color: '#34d399', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Potencjał Oszczędności</h3>
                   <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#10b981' }}>~ {stats.savings.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#059669', fontWeight: 'normal'}}>PLN</span></p>
                 </div>
               </div>
@@ -489,7 +495,7 @@ export default async function Home({ searchParams }) {
               </div>
 
               <div style={{ backgroundColor: '#141414', padding: '2rem', borderRadius: '24px', border: '1px solid #222', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
-                <h2 style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#ddd', fontWeight: '500' }}>Szczegółowy profil zużycia</h2>
+                <h2 style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#ddd', fontWeight: '500' }}>Szczegółowy profil zużycia (historyczny)</h2>
                 <Chart data={chartData} />
               </div>
             </div>
