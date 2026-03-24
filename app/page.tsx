@@ -18,11 +18,13 @@ export default async function Home({ searchParams }) {
 
   const resolvedParams = await Promise.resolve(searchParams || {});
 
-  // --- WIDOK DLA NIEZALOGOWANYCH ---
+  // --- WIDOK DLA NIEZALOGOWANYCH (LANDING PAGE) ---
   if (!userId) {
     return (
       <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%' }}>
         <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#334155' }}>
+          
+          {/* HERO SECTION */}
           <div style={{ padding: '8rem 2rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#dcfce7', color: '#059669', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #a7f3d0' }}>
               Nowość: Gotowe na taryfy dynamiczne
@@ -40,21 +42,91 @@ export default async function Home({ searchParams }) {
             </SignInButton>
           </div>
 
-          <div style={{ backgroundColor: '#ffffff', padding: '5rem 2rem', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+          {/* NOWA SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
+          <div style={{ backgroundColor: '#ffffff', padding: '6rem 2rem', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', alignItems: 'center' }}>
+              
+              <div style={{ flex: '1 1 450px' }}>
+                <h2 style={{ fontSize: '2.5rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+                  Dlaczego intuicja to <span style={{ color: '#ef4444' }}>za mało?</span>
+                </h2>
+                <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                  Na taryfach dynamicznych ceny prądu potrafią zmienić się diametralnie z godziny na godzinę. Są całkowicie uzależnione od pogody — wiatru i słońca.
+                </p>
+                <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
+                  W bezchmurny weekend prąd w południe może być <strong>całkowicie darmowy</strong>. Ale wystarczy pochmurny wtorek, by wieczorne pranie kosztowało Cię 5 razy więcej niż zazwyczaj. Ręczne śledzenie tych anomalii jest uciążliwe. Nasz system analizuje giełdę za Ciebie.
+                </p>
+                
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div style={{ padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
+                     <div style={{ fontSize: '1.8rem', marginBottom: '5px' }}>☀️</div>
+                     <span style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Słoneczne południe</span>
+                     <p style={{ fontWeight: '900', color: '#10b981', margin: '5px 0 0 0', fontSize: '1.3rem' }}>-0.05 PLN</p>
+                  </div>
+                  <div style={{ padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
+                     <div style={{ fontSize: '1.8rem', marginBottom: '5px' }}>☁️</div>
+                     <span style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Pochmurny wieczór</span>
+                     <p style={{ fontWeight: '900', color: '#ef4444', margin: '5px 0 0 0', fontSize: '1.3rem' }}>0.85 PLN</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ flex: '1 1 500px', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Wyłącznie w wersji PRO</span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500' }}>Przykładowy radar dzienny</span>
+                 </div>
+                 
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2.5rem' }}>
+                   <div>
+                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🟢 Najtańsze okno</p>
+                      <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#10b981' }}>11:00 - 14:00</p>
+                   </div>
+                   <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🔴 Unikaj zużycia</p>
+                      <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#ef4444' }}>19:00 - 22:00</p>
+                   </div>
+                 </div>
+                 
+                 <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby</p>
+                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
+                    {[0.3, 0.25, 0.2, 0.35, 0.5, 0.2, -0.05, -0.02, 0.1, 0.3, 0.6, 0.85, 0.7, 0.5, 0.4].map((price, i) => {
+                       const isMin = price === -0.05;
+                       const isMax = price === 0.85;
+                       const h = Math.max(10, ((price - (-0.05)) / 0.9) * 120);
+                       return (
+                         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                           <div style={{ width: '70%', minWidth: '4px', height: `${h}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '3px 3px 0 0' }}></div>
+                         </div>
+                       )
+                    })}
+                 </div>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500' }}>
+                    <span>00:00</span>
+                    <span>12:00</span>
+                    <span>23:00</span>
+                 </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* SEKCJA KAFELKÓW */}
+          <div style={{ backgroundColor: '#f8fafc', padding: '5rem 2rem', borderTop: '1px solid #e2e8f0' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
               <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Analityka 15-minutowa</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Łączymy Twoje dane od operatora z oficjalnymi cenami PSE. Zobaczysz dokładny koszt każdego kwadransa.</p>
                 </div>
-                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych.</p>
                 </div>
-                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Prognoza na dziś (Premium)</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
