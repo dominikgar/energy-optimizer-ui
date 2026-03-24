@@ -52,11 +52,7 @@ export default async function Home({ searchParams }) {
     const day = String(polandTime.getDate()).padStart(2, '0');
     const todayStr = `${year}-${month}-${day}`; 
     
-    // ZMIANA: Używamy nowej kolumny 'business_date' i wbudowanego URLSearchParams dla 100% bezpieczeństwa
-    const params = new URLSearchParams({
-      "$filter": `business_date eq '${todayStr}'`
-    });
-    
+    const params = new URLSearchParams({ "$filter": `business_date eq '${todayStr}'` });
     const targetUrl = `https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`;
     
     const pseRes = await fetch(targetUrl, { 
@@ -74,10 +70,17 @@ export default async function Home({ searchParams }) {
         
         pseJson.value.forEach(row => {
           const priceKwh = row.rce_pln / 1000;
-          // Pobieramy godzinę udtczas (w starszych API to udtczas_oreb)
-          const timeStr = row.udtczas || row.udtczas_oreb || '';
-          const hourParts = timeStr.split(' ');
-          const hour = hourParts.length > 1 ? hourParts[1].substring(0, 5) : '??:??';
+          
+          // KULOODPORNE WYCIĄGANIE GODZINY
+          const timeStr = String(row.udtczas || row.udtczas_oreb || '');
+          let hour = '??:??';
+          const timeMatch = timeStr.match(/(\d{2}:\d{2})/); // Szuka formatu HH:MM obojętnie gdzie jest
+          
+          if (timeMatch) {
+            hour = timeMatch[1];
+          } else if (row.godzina) {
+            hour = String(row.godzina).padStart(2, '0') + ':00';
+          }
           
           if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
           if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
@@ -85,7 +88,6 @@ export default async function Home({ searchParams }) {
         
         todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr };
       } else {
-        // Fallback: jeśli nadal korzystają ze starego schematu na tym konkretnym endpoincie
         const fallbackParams = new URLSearchParams({ "$filter": `doba eq '${todayStr}'` });
         const fallbackRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${fallbackParams.toString()}`, { cache: 'no-store' });
         
@@ -99,9 +101,17 @@ export default async function Home({ searchParams }) {
               
               fallbackJson.value.forEach(row => {
                 const priceKwh = row.rce_pln / 1000;
-                const timeStr = row.udtczas || row.udtczas_oreb || '';
-                const hourParts = timeStr.split(' ');
-                const hour = hourParts.length > 1 ? hourParts[1].substring(0, 5) : '??:??';
+                
+                // KULOODPORNE WYCIĄGANIE GODZINY
+                const timeStr = String(row.udtczas || row.udtczas_oreb || '');
+                let hour = '??:??';
+                const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
+                
+                if (timeMatch) {
+                  hour = timeMatch[1];
+                } else if (row.godzina) {
+                  hour = String(row.godzina).padStart(2, '0') + ':00';
+                }
                 
                 if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
                 if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
