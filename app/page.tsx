@@ -52,7 +52,12 @@ export default async function Home({ searchParams }) {
     const day = String(polandTime.getDate()).padStart(2, '0');
     const todayStr = `${year}-${month}-${day}`; 
     
-    const targetUrl = `https://api.raporty.pse.pl/api/rce-pln?$filter=doba%20eq%20'${todayStr}'`;
+    // ZMIANA: Używamy nowej kolumny 'business_date' i wbudowanego URLSearchParams dla 100% bezpieczeństwa
+    const params = new URLSearchParams({
+      "$filter": `business_date eq '${todayStr}'`
+    });
+    
+    const targetUrl = `https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`;
     
     const pseRes = await fetch(targetUrl, { 
       cache: 'no-store',
@@ -69,7 +74,9 @@ export default async function Home({ searchParams }) {
         
         pseJson.value.forEach(row => {
           const priceKwh = row.rce_pln / 1000;
-          const hourParts = row.udtczas.split(' ');
+          // Pobieramy godzinę udtczas (w starszych API to udtczas_oreb)
+          const timeStr = row.udtczas || row.udtczas_oreb || '';
+          const hourParts = timeStr.split(' ');
           const hour = hourParts.length > 1 ? hourParts[1].substring(0, 5) : '??:??';
           
           if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
@@ -78,10 +85,37 @@ export default async function Home({ searchParams }) {
         
         todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr };
       } else {
-        forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}.`;
+        // Fallback: jeśli nadal korzystają ze starego schematu na tym konkretnym endpoincie
+        const fallbackParams = new URLSearchParams({ "$filter": `doba eq '${todayStr}'` });
+        const fallbackRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${fallbackParams.toString()}`, { cache: 'no-store' });
+        
+        if (fallbackRes.ok) {
+           const fallbackJson = await fallbackRes.json();
+           if (fallbackJson.value && fallbackJson.value.length > 0) {
+              let minPrice = 9999;
+              let maxPrice = -9999;
+              let bestHour = '';
+              let worstHour = '';
+              
+              fallbackJson.value.forEach(row => {
+                const priceKwh = row.rce_pln / 1000;
+                const timeStr = row.udtczas || row.udtczas_oreb || '';
+                const hourParts = timeStr.split(' ');
+                const hour = hourParts.length > 1 ? hourParts[1].substring(0, 5) : '??:??';
+                
+                if (priceKwh < minPrice) { minPrice = priceKwh; bestHour = hour; }
+                if (priceKwh > maxPrice) { maxPrice = priceKwh; worstHour = hour; }
+              });
+              todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr };
+           } else {
+             forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}. (Brak danych w bazie giełdy)`;
+           }
+        } else {
+           forecastError = `Błąd zapytania PSE. Giełda mogła zmienić format danych.`;
+        }
       }
     } else {
-      forecastError = `Błąd API PSE (Kod: ${pseRes.status}). Spróbuj wymusić pobranie.`;
+      forecastError = `Błąd API PSE (Kod: ${pseRes.status}). Odrzucono zapytanie.`;
     }
   } catch (e) {
     forecastError = "Brak odpowiedzi od serwerów PSE. Giełda może być chwilowo niedostępna.";
@@ -171,7 +205,7 @@ export default async function Home({ searchParams }) {
       <div style={{ marginBottom: '3rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
           <span style={{ backgroundColor: '#eab308', color: '#422006', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Funkcja Premium</span>
-          <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#fff' }}>Plan na dziś</h2>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#fff' }}>Plan na dziś ({new Date().toLocaleDateString('pl-PL')})</h2>
         </div>
 
         {todayForecast ? (
