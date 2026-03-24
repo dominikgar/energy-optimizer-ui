@@ -18,21 +18,77 @@ export default async function Home({ searchParams }) {
 
   const resolvedParams = await Promise.resolve(searchParams || {});
 
+  // --- STYLE GLOBALNE RESPONSOWNE DLA URZĄDZEŃ MOBILNYCH ---
+  const globalStyles = `
+    .app-wrapper { padding: 2rem 3rem; }
+    .hero-title { font-size: 4.5rem; }
+    .tabs-row { flex-wrap: wrap; }
+    .chart-scroll-box { overflow-x: visible; width: 100%; }
+    .chart-flex-box { min-width: auto; }
+    .hide-on-mobile { display: block; }
+    
+    .chart-col { position: relative; cursor: crosshair; }
+    .chart-tooltip {
+      visibility: hidden; opacity: 0; position: absolute; left: 50%; transform: translateX(-50%);
+      background-color: #1e293b; color: #fff; padding: 8px 12px; border-radius: 8px;
+      font-size: 0.8rem; line-height: 1.4; white-space: nowrap;
+      transition: opacity 0.2s ease, transform 0.2s ease; z-index: 50; pointer-events: none;
+      border: 1px solid #334155; box-shadow: 0 10px 20px rgba(0,0,0,0.2); text-align: center;
+    }
+    .chart-tooltip::after {
+      content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
+      border-width: 6px; border-style: solid; border-color: #1e293b transparent transparent transparent;
+    }
+    .chart-col:hover .chart-tooltip { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(-5px); }
+    .chart-col:hover .chart-bar-fill { opacity: 1 !important; filter: brightness(1.1); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 768px) {
+      .app-wrapper { padding: 1.5rem 1rem !important; }
+      .hero-title { font-size: 2.5rem !important; }
+      .tabs-row { flex-wrap: nowrap !important; overflow-x: auto !important; padding-bottom: 10px !important; -webkit-overflow-scrolling: touch; }
+      .tabs-row::-webkit-scrollbar { display: none; }
+      .chart-scroll-box { overflow-x: auto !important; padding-bottom: 15px !important; -webkit-overflow-scrolling: touch; }
+      .chart-flex-box { min-width: 600px !important; }
+      .hide-on-mobile { display: none !important; }
+      .mobile-col { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 1rem !important; }
+      .mobile-border-left-none { border-left: none !important; padding-left: 0 !important; border-top: 1px solid #e2e8f0; padding-top: 1rem !important; margin-top: 0.5rem !important; width: 100%; }
+      .mobile-card-padding { padding: 1.5rem !important; }
+      .mobile-flex-wrap { flex-wrap: wrap !important; }
+    }
+  `;
+
   // --- WIDOK DLA NIEZALOGOWANYCH (LANDING PAGE) ---
   if (!userId) {
     return (
       <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%' }}>
+        <style dangerouslySetInnerHTML={{__html: globalStyles}} />
+        
+        {/* MOBILNY NAGŁÓWEK DLA NIEZALOGOWANYCH */}
+        <header className="app-wrapper" style={{ paddingBottom: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>
+            ⚡ Energy Optimizer
+          </div>
+          <div>
+            <SignInButton mode="modal">
+              <button style={{ padding: '8px 20px', backgroundColor: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                Zaloguj się
+              </button>
+            </SignInButton>
+          </div>
+        </header>
+
         <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#334155' }}>
           
           {/* HERO SECTION */}
-          <div style={{ padding: '8rem 2rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
+          <div className="app-wrapper" style={{ padding: '4rem 2rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#dcfce7', color: '#059669', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #a7f3d0' }}>
               Nowość: Gotowe na taryfy dynamiczne
             </div>
-            <h1 style={{ fontSize: '4.5rem', marginBottom: '1.5rem', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px' }}>
+            <h1 className="hero-title" style={{ marginBottom: '1.5rem', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px' }}>
               Zapanuj nad swoim rachunkiem za prąd
             </h1>
-            <p style={{ color: '#64748b', fontSize: '1.3rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 3rem' }}>
+            <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 3rem' }}>
               Wgraj swój plik z Taurona i natychmiast dowiedz się, ile realnie kosztuje Cię prąd na giełdzie. Odkryj swój potencjał oszczędności.
             </p>
             <SignInButton mode="modal">
@@ -43,10 +99,10 @@ export default async function Home({ searchParams }) {
           </div>
 
           {/* NOWA SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
-          <div style={{ backgroundColor: '#ffffff', padding: '6rem 2rem', borderTop: '1px solid #e2e8f0' }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', alignItems: 'center' }}>
+          <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
+            <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center' }}>
               
-              <div style={{ flex: '1 1 450px' }}>
+              <div style={{ flex: '1 1 300px' }}>
                 <h2 style={{ fontSize: '2.5rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
                   Dlaczego intuicja to <span style={{ color: '#ef4444' }}>za mało?</span>
                 </h2>
@@ -57,13 +113,13 @@ export default async function Home({ searchParams }) {
                   W bezchmurny weekend prąd w południe może być <strong>całkowicie darmowy</strong>. Ale wystarczy pochmurny wtorek, by wieczorne pranie kosztowało Cię 5 razy więcej niż zazwyczaj. Ręczne śledzenie tych anomalii jest uciążliwe. Nasz system analizuje giełdę za Ciebie.
                 </p>
                 
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <div style={{ padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', flex: '1 1 120px' }}>
                      <div style={{ fontSize: '1.8rem', marginBottom: '5px' }}>☀️</div>
                      <span style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Słoneczne południe</span>
                      <p style={{ fontWeight: '900', color: '#10b981', margin: '5px 0 0 0', fontSize: '1.3rem' }}>-0.05 PLN</p>
                   </div>
-                  <div style={{ padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
+                  <div style={{ padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', flex: '1 1 120px' }}>
                      <div style={{ fontSize: '1.8rem', marginBottom: '5px' }}>☁️</div>
                      <span style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Pochmurny wieczór</span>
                      <p style={{ fontWeight: '900', color: '#ef4444', margin: '5px 0 0 0', fontSize: '1.3rem' }}>0.85 PLN</p>
@@ -71,35 +127,39 @@ export default async function Home({ searchParams }) {
                 </div>
               </div>
 
-              <div style={{ flex: '1 1 500px', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <div className="mobile-card-padding" style={{ flex: '1 1 300px', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '10px' }}>
                     <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Wyłącznie w wersji PRO</span>
                     <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500' }}>Przykładowy radar dzienny</span>
                  </div>
                  
-                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2.5rem' }}>
+                 <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2.5rem' }}>
                    <div>
                       <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🟢 Najtańsze okno</p>
                       <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#10b981' }}>11:00 - 14:00</p>
                    </div>
-                   <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+                   <div className="mobile-border-left-none" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
                       <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🔴 Unikaj zużycia</p>
                       <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#ef4444' }}>19:00 - 22:00</p>
                    </div>
                  </div>
                  
                  <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby</p>
-                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
-                    {[0.3, 0.25, 0.2, 0.35, 0.5, 0.2, -0.05, -0.02, 0.1, 0.3, 0.6, 0.85, 0.7, 0.5, 0.4].map((price, i) => {
-                       const isMin = price === -0.05;
-                       const isMax = price === 0.85;
-                       const h = Math.max(10, ((price - (-0.05)) / 0.9) * 120);
-                       return (
-                         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-                           <div style={{ width: '70%', minWidth: '4px', height: `${h}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '3px 3px 0 0' }}></div>
-                         </div>
-                       )
-                    })}
+                 
+                 {/* RESPONSIVNY KONTENER DLA MAKIETY WYKRESU */}
+                 <div className="chart-scroll-box">
+                   <div className="chart-flex-box" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
+                      {[0.3, 0.25, 0.2, 0.35, 0.5, 0.2, -0.05, -0.02, 0.1, 0.3, 0.6, 0.85, 0.7, 0.5, 0.4].map((price, i) => {
+                         const isMin = price === -0.05;
+                         const isMax = price === 0.85;
+                         const h = Math.max(10, ((price - (-0.05)) / 0.9) * 120);
+                         return (
+                           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                             <div style={{ width: '70%', minWidth: '4px', height: `${h}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '3px 3px 0 0' }}></div>
+                           </div>
+                         )
+                      })}
+                   </div>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500' }}>
                     <span>00:00</span>
@@ -111,9 +171,9 @@ export default async function Home({ searchParams }) {
             </div>
           </div>
 
-          {/* SEKCJA KAFELKÓW (ZMODYFIKOWANA O 4 KAFELEK API) */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '5rem 2rem', borderTop: '1px solid #e2e8f0' }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* SEKCJA KAFELKÓW */}
+          <div style={{ backgroundColor: '#f8fafc', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
+            <div className="app-wrapper" style={{ maxWidth: '1200px', margin: '0 auto' }}>
               <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
                 <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
@@ -362,7 +422,8 @@ export default async function Home({ searchParams }) {
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%' }}>
-      <main style={{ padding: '2rem 3rem', fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#334155' }}>
+      <style dangerouslySetInnerHTML={{__html: globalStyles}} />
+      <main className="app-wrapper" style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#334155' }}>
         
         {/* HEADER */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -370,13 +431,13 @@ export default async function Home({ searchParams }) {
             ⚡ Energy Optimizer AI
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span style={{ color: '#64748b', fontSize: '0.9rem', display: 'none', '@media(minWidth: 600px)': { display: 'block' } }}>Zarządzaj kontem ➔</span>
+            <span className="hide-on-mobile" style={{ color: '#64748b', fontSize: '0.9rem' }}>Zarządzaj kontem ➔</span>
             <UserButton afterSignOutUrl="/" />
           </div>
         </header>
 
         {/* SYSTEM ZAKŁADEK (TABS) */}
-        <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #e2e8f0', marginBottom: '3rem', flexWrap: 'wrap' }}>
+        <div className="tabs-row" style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #e2e8f0', marginBottom: '3rem' }}>
           <Link 
             href={`/?tab=radar&days=${days}`} 
             scroll={false} 
@@ -478,9 +539,9 @@ export default async function Home({ searchParams }) {
                   </div>
                 )}
 
-                <div style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
+                <div className="mobile-card-padding" style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                  <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                     <div>
                       <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🟢 Najtańsze okno (3 godz.)</p>
                       <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981', whiteSpace: 'nowrap' }}>
@@ -490,7 +551,7 @@ export default async function Home({ searchParams }) {
                          Średnia cena: {todayForecast.bestWindowAvgPrice.toFixed(2)} PLN/kWh
                       </p>
                     </div>
-                    <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+                    <div className="mobile-border-left-none" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
                       <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🔴 Unikaj dużego zużycia</p>
                       <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444', whiteSpace: 'nowrap' }}>
                          {todayForecast.worstWindowStart} - {todayForecast.worstWindowEnd}
@@ -502,79 +563,35 @@ export default async function Home({ searchParams }) {
                   </div>
 
                   <div style={{ paddingTop: '2rem', borderTop: '1px solid #e2e8f0' }}>
-                    <style dangerouslySetInnerHTML={{__html: `
-                      .chart-col { position: relative; cursor: crosshair; }
-                      .chart-tooltip {
-                        visibility: hidden;
-                        opacity: 0;
-                        position: absolute;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        background-color: #1e293b;
-                        color: #fff;
-                        padding: 8px 12px;
-                        border-radius: 8px;
-                        font-size: 0.8rem;
-                        line-height: 1.4;
-                        white-space: nowrap;
-                        transition: opacity 0.2s ease, transform 0.2s ease;
-                        z-index: 50;
-                        pointer-events: none;
-                        border: 1px solid #334155;
-                        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-                        text-align: center;
-                      }
-                      .chart-tooltip::after {
-                        content: '';
-                        position: absolute;
-                        top: 100%;
-                        left: 50%;
-                        margin-left: -6px;
-                        border-width: 6px;
-                        border-style: solid;
-                        border-color: #1e293b transparent transparent transparent;
-                      }
-                      .chart-col:hover .chart-tooltip {
-                        visibility: visible;
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(-5px);
-                      }
-                      .chart-col:hover .chart-bar-fill {
-                        opacity: 1 !important;
-                        filter: brightness(1.1);
-                      }
-                      @keyframes fadeIn {
-                        from { opacity: 0; transform: translateY(10px); }
-                        to { opacity: 1; transform: translateY(0); }
-                      }
-                    `}} />
-
                     <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
                     
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
-                      {todayForecast.prices.map((item, i) => {
-                        const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
-                        const barHeight = Math.max(10, ((item.price - todayForecast.absoluteMinPrice) / range) * 120);
-                        const isMin = item.price === todayForecast.absoluteMinPrice;
-                        const isMax = item.price === todayForecast.absoluteMaxPrice;
-                        const isFullHour = item.time.endsWith('00');
-                        
-                        return (
-                          <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', marginBottom: '4px', display: 'block', minHeight: '15px' }}>
-                              {isMin || isMax ? item.price.toFixed(2) : ''}
-                            </span>
-                            <div className="chart-bar-fill" style={{ width: '90%', maxWidth: '8px', minWidth: '2px', height: `${barHeight}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '2px 2px 0 0', opacity: isMin || isMax ? 1 : 0.7, transition: 'opacity 0.2s, filter 0.2s' }}></div>
-                            <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
-                              <strong style={{ color: isMin ? '#34d399' : isMax ? '#fca5a5' : '#93c5fd' }}>{item.time}</strong><br/>
-                              {item.price.toFixed(2)} PLN
+                    {/* RESPONSIVNY KONTENER WYKRESU */}
+                    <div className="chart-scroll-box">
+                      <div className="chart-flex-box" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
+                        {todayForecast.prices.map((item, i) => {
+                          const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
+                          const barHeight = Math.max(10, ((item.price - todayForecast.absoluteMinPrice) / range) * 120);
+                          const isMin = item.price === todayForecast.absoluteMinPrice;
+                          const isMax = item.price === todayForecast.absoluteMaxPrice;
+                          const isFullHour = item.time.endsWith('00');
+                          
+                          return (
+                            <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', marginBottom: '4px', display: 'block', minHeight: '15px' }}>
+                                {isMin || isMax ? item.price.toFixed(2) : ''}
+                              </span>
+                              <div className="chart-bar-fill" style={{ width: '90%', maxWidth: '8px', minWidth: '2px', height: `${barHeight}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '2px 2px 0 0', opacity: isMin || isMax ? 1 : 0.7, transition: 'opacity 0.2s, filter 0.2s' }}></div>
+                              <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
+                                <strong style={{ color: isMin ? '#34d399' : isMax ? '#fca5a5' : '#93c5fd' }}>{item.time}</strong><br/>
+                                {item.price.toFixed(2)} PLN
+                              </div>
+                              <span style={{ fontSize: '0.6rem', marginTop: '4px', display: 'block', minHeight: '14px', color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#94a3b8' : 'transparent' }}>
+                                {item.time.split(':')[0]}
+                              </span>
                             </div>
-                            <span style={{ fontSize: '0.6rem', marginTop: '4px', display: 'block', minHeight: '14px', color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#94a3b8' : 'transparent' }}>
-                              {item.time.split(':')[0]}
-                            </span>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
@@ -603,13 +620,13 @@ export default async function Home({ searchParams }) {
         {/* ========================================= */}
         {activeTab === 'history' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+            <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
               <div>
                 <h2 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0, fontWeight: 'bold' }}>Twoja Historia Zużycia</h2>
                 <p style={{ color: '#64748b', margin: '5px 0 0' }}>Analiza wgranych danych z Twojego licznika</p>
               </div>
               
-              <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: '#f8fafc', padding: '0.4rem', borderRadius: '30px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: '#f8fafc', padding: '0.4rem', borderRadius: '30px', border: '1px solid #e2e8f0', width: 'max-content' }}>
                 <Link href={`/?tab=history&days=3`} scroll={false} style={getBtnStyle(3)}>3 Dni</Link>
                 <Link href={`/?tab=history&days=7`} scroll={false} style={getBtnStyle(7)}>7 Dni</Link>
                 <Link href={`/?tab=history&days=30`} scroll={false} style={getBtnStyle(30)}>30 Dni</Link>
@@ -618,10 +635,10 @@ export default async function Home({ searchParams }) {
 
             {chartData.length === 0 ? (
               <>
-                <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
+                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
                    <UploadSection />
                 </div>
-                <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px dashed #cbd5e1', marginTop: '2rem' }}>
+                <div className="mobile-card-padding" style={{ textAlign: 'center', padding: '4rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px dashed #cbd5e1', marginTop: '2rem' }}>
                   <h2 style={{ color: '#0f172a' }}>Brak danych w bazie</h2>
                   <p style={{ color: '#64748b' }}>Użyj obszaru wyżej, aby wgrać swój plik CSV z Taurona.</p>
                 </div>
@@ -630,7 +647,7 @@ export default async function Home({ searchParams }) {
               <div style={{ marginTop: '2rem' }}>
                 
                 {/* UKRYTY UPLOAD DANYCH (Rozwijany) */}
-                <details style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
+                <details className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
                   <summary style={{ fontWeight: '600', color: '#3b82f6', fontSize: '1.05rem', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>⚙️</span> Zaktualizuj dane (wgraj nowy plik CSV)
                   </summary>
@@ -639,29 +656,28 @@ export default async function Home({ searchParams }) {
                   </div>
                 </details>
 
-                <div style={{ marginBottom: '2rem', padding: '1rem 1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                <div className="mobile-col" style={{ marginBottom: '2rem', padding: '1rem 1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                   <div>
                      <span style={{ color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Zakres analizy:</span>
                      <p style={{ margin: 0, fontSize: '1.1rem', color: '#2563eb', fontWeight: 'bold' }}>{stats.rangeText}</p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right' }} className="mobile-text-center">
                      <span style={{ color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Ostatnie dane z licznika:</span>
                      <p style={{ margin: 0, fontSize: '1.1rem', color: '#059669', fontWeight: 'bold' }}>{stats.lastSync}</p>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                  <div style={{ padding: '2rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                  <div className="mobile-card-padding" style={{ padding: '2rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                     <h3 style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Koszt w tym okresie</h3>
                     <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#0f172a' }}>{stats.cost.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal'}}>PLN</span></p>
                   </div>
-                  <div style={{ padding: '2rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                  <div className="mobile-card-padding" style={{ padding: '2rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                     <h3 style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Zużycie energii</h3>
                     <p style={{ margin: '15px 0 0', fontSize: '2.8rem', fontWeight: '800', color: '#0f172a' }}>{stats.kwh.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal'}}>kWh</span></p>
                   </div>
                   
-                  {/* ZMODYFIKOWANY KAFELEK: POTENCJAŁ OSZCZĘDNOŚCI (DODANO WYJAŚNIENIE) */}
-                  <div style={{ padding: '2rem', backgroundColor: '#dcfce7', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div className="mobile-card-padding" style={{ padding: '2rem', backgroundColor: '#dcfce7', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <h3 style={{ margin: 0, color: '#059669', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Potencjał Oszczędności</h3>
                     <p style={{ margin: '15px 0 10px 0', fontSize: '2.8rem', fontWeight: '800', color: '#047857' }}>~ {stats.savings.toFixed(2)} <span style={{fontSize: '1.2rem', color: '#10b981', fontWeight: 'normal'}}>PLN</span></p>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: '#065f46', lineHeight: '1.4' }}>
@@ -672,7 +688,7 @@ export default async function Home({ searchParams }) {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                  <div style={{ padding: '1.5rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px' }}>
+                  <div className="mobile-card-padding" style={{ padding: '1.5rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px' }}>
                     <h4 style={{ color: '#b91c1c', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span>⚠️</span> Twój historyczny wampir
                     </h4>
@@ -682,7 +698,7 @@ export default async function Home({ searchParams }) {
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
                   <h2 style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#0f172a', fontWeight: 'bold' }}>Szczegółowy profil zużycia (historyczny)</h2>
                   <Chart data={chartData} />
                 </div>
@@ -701,9 +717,9 @@ export default async function Home({ searchParams }) {
               <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#0f172a' }}>Integracja Home Assistant</h2>
             </div>
             
-            <div style={{ backgroundColor: '#ffffff', padding: '3rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+            <div className="mobile-card-padding" style={{ backgroundColor: '#ffffff', padding: '3rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', alignItems: 'center' }}>
-                <div style={{ flex: '1 1 400px' }}>
+                <div style={{ flex: '1 1 300px' }}>
                   <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>Twój dom, Twoje zasady. Nasze dane.</h3>
                   <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
                     Pracujemy nad otwartym API, które pozwoli Ci pobrać nasze wyliczenia (najtańsze okna 3-godzinne, przewidywania anomalii) bezpośrednio do Twojego systemu Smart Home (Home Assistant, Node-RED, Fibaro).
@@ -717,14 +733,14 @@ export default async function Home({ searchParams }) {
                   <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '1rem' }}>* Przewidywany koszt abonamentu API: 14.99 PLN/msc.</p>
                 </div>
                 
-                <div style={{ flex: '1 1 400px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+                <div className="chart-scroll-box" style={{ flex: '1 1 300px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
                   </div>
                   <div style={{ color: '#a855f7', marginBottom: '8px', fontWeight: 'bold' }}>GET /api/v1/forecast/best-window</div>
-                  <div style={{ paddingLeft: '1rem', borderLeft: '2px solid #334155' }}>
+                  <div style={{ paddingLeft: '1rem', borderLeft: '2px solid #334155', minWidth: '350px' }}>
                     {"{"}<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump"</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
