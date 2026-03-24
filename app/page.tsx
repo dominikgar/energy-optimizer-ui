@@ -16,7 +16,6 @@ const pool = new Pool({
 export default async function Home({ searchParams }) {
   const { userId } = auth();
 
-  // --- EKRAN DLA NIEZALOGOWANYCH ---
   if (!userId) {
     return (
       <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#eaeaea', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
@@ -36,41 +35,20 @@ export default async function Home({ searchParams }) {
             </button>
           </SignInButton>
         </div>
-        <div style={{ backgroundColor: '#111', padding: '5rem 2rem', borderTop: '1px solid #222', borderBottom: '1px solid #222' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#fff', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Analityka 15-minutowa</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Łączymy Twoje dane od operatora z oficjalnymi cenami PSE. Zobaczysz dokładny koszt każdego kwadransa.</p>
-              </div>
-              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych.</p>
-              </div>
-              <div style={{ padding: '2.5rem', backgroundColor: '#18181b', borderRadius: '24px', border: '1px solid #27272a' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
-                <h3 style={{ fontSize: '1.4rem', color: '#e4e4e7', marginBottom: '1rem' }}>Prognoza na dziś (Premium)</h3>
-                <p style={{ color: '#a1a1aa', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     );
   }
 
   // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
   let todayForecast = null;
+  let forecastError = null; // Zmienna trzymająca powód błędu
+  
   try {
-    // Generujemy dzisiejszą datę w formacie YYYY-MM-DD z uwzględnieniem strefy czasowej
     const today = new Date();
     const todayStr = today.toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }); 
     
-    // Odpytujemy bezpośrednio rządowe API
-    const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '${todayStr}'`, { next: { revalidate: 3600 } });
+    // ZMIANA: Usunęliśmy agresywny cache Next.js (cache: 'no-store'), aby zawsze pobierał świeże dane!
+    const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '${todayStr}'`, { cache: 'no-store' });
     
     if (pseRes.ok) {
       const pseJson = await pseRes.json();
@@ -82,7 +60,6 @@ export default async function Home({ searchParams }) {
         
         pseJson.value.forEach(row => {
           const priceKwh = row.rce_pln / 1000;
-          // Wyciągamy godzinę z formatu "YYYY-MM-DD HH:MM:SS" lub "YYYY-MM-DD HH:MM"
           const hourParts = row.udtczas.split(' ');
           const hour = hourParts.length > 1 ? hourParts[1].substring(0, 5) : '??:??';
           
@@ -91,13 +68,17 @@ export default async function Home({ searchParams }) {
         });
         
         todayForecast = { minPrice, maxPrice, bestHour, worstHour, date: todayStr };
+      } else {
+        forecastError = "Serwer PSE nie udostępnił jeszcze cen na ten dzień.";
       }
+    } else {
+      forecastError = `Błąd połączenia z giełdą PSE (Kod: ${pseRes.status}).`;
     }
   } catch (e) {
-    console.error("Nie udało się pobrać cen na dziś z PSE", e);
+    forecastError = "Brak odpowiedzi od serwerów PSE. Giełda może być chwilowo niedostępna.";
   }
 
-  // --- 2. DANE HISTORYCZNE Z BAZY (LUSTERKO WSTECZNE) ---
+  // --- 2. DANE HISTORYCZNE Z BAZY ---
   const days = parseInt(searchParams?.days) || 3;
   const hoursLimit = days * 24;
 
@@ -186,23 +167,27 @@ export default async function Home({ searchParams }) {
 
         {todayForecast ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', borderRadius: '24px', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)' }}>
-            
             <div>
               <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🟢 Najlepszy moment na pranie</p>
               <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981' }}>{todayForecast.bestHour}</p>
               <p style={{ margin: '5px 0 0 0', color: '#6ee7b7', fontSize: '0.9rem' }}>Cena zaledwie: {todayForecast.minPrice.toFixed(2)} PLN/kWh</p>
             </div>
-
             <div style={{ borderLeft: '1px solid #333', paddingLeft: '1.5rem' }}>
               <p style={{ margin: '0 0 5px 0', color: '#a1a1aa', fontSize: '0.9rem', textTransform: 'uppercase' }}>🔴 Unikaj wysokiego zużycia</p>
               <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444' }}>{todayForecast.worstHour}</p>
               <p style={{ margin: '5px 0 0 0', color: '#fca5a5', fontSize: '0.9rem' }}>Cena aż: {todayForecast.maxPrice.toFixed(2)} PLN/kWh</p>
             </div>
-
           </div>
         ) : (
-          <div style={{ padding: '2rem', backgroundColor: '#18181b', borderRadius: '20px', border: '1px dashed #333', color: '#888' }}>
-            Ładowanie najnowszych cen giełdowych PSE... (Odśwież stronę za moment)
+          <div style={{ padding: '2rem', backgroundColor: '#18181b', borderRadius: '20px', border: '1px solid #333', color: '#eaeaea', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#ef4444' }}>⚠️ Wystąpił problem z pobraniem danych</p>
+              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>{forecastError || "Ładowanie najnowszych cen giełdowych PSE..."}</p>
+            </div>
+            {/* PRZYCISK WYMUSZENIA ODŚWIEŻENIA */}
+            <a href="/" style={{ padding: '10px 20px', backgroundColor: '#333', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', border: '1px solid #444' }}>
+              Wymuś pobranie 🔄
+            </a>
           </div>
         )}
       </div>
