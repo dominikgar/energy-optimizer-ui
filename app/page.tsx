@@ -111,11 +111,11 @@ export default async function Home({ searchParams }) {
             </div>
           </div>
 
-          {/* SEKCJA KAFELKÓW */}
+          {/* SEKCJA KAFELKÓW (ZMODYFIKOWANA O 4 KAFELEK API) */}
           <div style={{ backgroundColor: '#f8fafc', padding: '5rem 2rem', borderTop: '1px solid #e2e8f0' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
               <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
                 <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Analityka 15-minutowa</h3>
@@ -128,8 +128,13 @@ export default async function Home({ searchParams }) {
                 </div>
                 <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
-                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Prognoza na dziś (Premium)</h3>
+                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Prognoza na dziś (PRO)</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
+                </div>
+                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔌</div>
+                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>API & Smart Home</h3>
+                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Podłącz system pod Home Assistant. Automatycznie uruchamiaj pompę ciepła i bojler tylko w najtańszych godzinach.</p>
                 </div>
               </div>
             </div>
@@ -147,7 +152,7 @@ export default async function Home({ searchParams }) {
   let todayForecast = null;
   let forecastError = null; 
   
-  if (activeTab === 'radar') {
+  if (activeTab === 'radar' || activeTab === 'api') {
     try {
       const now = new Date();
       const polandTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
@@ -191,13 +196,7 @@ export default async function Home({ searchParams }) {
             pricesArr.push({ time: hour, price: priceKwh });
           });
           
-          // --- NOWY ALGORYTM SKANOWANIA OKIENEK 3-GODZINNYCH ---
-          // Zakładamy, że dane są po kolei. Musimy znaleźć blok 3 godzin.
-          // Jeśli dane są godzinowe, to 3 elementy. Jeśli co 15 min, to 12 elementów.
-          // Dla bezpieczeństwa, uśredniamy bloki 3-godzinne używając indeksów.
-          
-          // Ustalmy odstęp między odczytami na podstawie pierwszych dwóch próbek
-          const isQuarterHourly = pricesArr.length > 30; // Jeśli próbek jest np. 96, to są kwadranse
+          const isQuarterHourly = pricesArr.length > 30;
           const elementsIn3Hours = isQuarterHourly ? 12 : 3;
 
           let bestWindowStart = '';
@@ -211,7 +210,6 @@ export default async function Home({ searchParams }) {
           const absoluteMinPrice = Math.min(...pricesArr.map(p => p.price));
           const absoluteMaxPrice = Math.max(...pricesArr.map(p => p.price));
 
-          // Szukamy "najlepszych" i "najgorszych" ciągłych przedziałów 3-godzinnych
           for (let i = 0; i <= pricesArr.length - elementsIn3Hours; i++) {
             let sum = 0;
             for (let j = 0; j < elementsIn3Hours; j++) {
@@ -223,20 +221,17 @@ export default async function Home({ searchParams }) {
               bestWindowAvgPrice = avg;
               bestWindowStart = pricesArr[i].time;
               
-              // Obliczanie czasu zakończenia dla czytelności (np. 12:00 -> 15:00)
-              let endItem = pricesArr[i + elementsIn3Hours - 1]; // Ostatni element w oknie (np 14:45)
+              let endItem = pricesArr[i + elementsIn3Hours - 1]; 
               let endHour = parseInt(endItem.time.split(':')[0]);
               let endMin = parseInt(endItem.time.split(':')[1] || 0);
               
-              // Dodajemy kwadrans, żeby uzyskać równe zamknięcie przedziału (np 14:45 + 15 min = 15:00)
               if (isQuarterHourly) {
                   endMin += 15;
                   if (endMin >= 60) { endHour += 1; endMin = 0; }
               } else {
-                  endHour += 1; // Jeśli to pełne godziny, to okno np 14:00 kończy się o 15:00
+                  endHour += 1; 
               }
               
-              // Zabezpieczenie przed 24:00
               if (endHour >= 24) endHour = 0;
               bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
             }
@@ -381,7 +376,7 @@ export default async function Home({ searchParams }) {
         </header>
 
         {/* SYSTEM ZAKŁADEK (TABS) */}
-        <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #e2e8f0', marginBottom: '3rem' }}>
+        <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #e2e8f0', marginBottom: '3rem', flexWrap: 'wrap' }}>
           <Link 
             href={`/?tab=radar&days=${days}`} 
             scroll={false} 
@@ -413,6 +408,26 @@ export default async function Home({ searchParams }) {
             }}
           >
             Profil Historyczny
+          </Link>
+          {/* NOWA ZAKŁADKA: API & HA */}
+          <Link 
+            href={`/?tab=api&days=${days}`} 
+            scroll={false} 
+            style={{ 
+              padding: '0.8rem 0', 
+              color: activeTab === 'api' ? '#0f172a' : '#64748b', 
+              borderBottom: activeTab === 'api' ? '2px solid #a855f7' : '2px solid transparent',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginLeft: 'auto' // Wypycha ten przycisk na prawo
+            }}
+          >
+            Automatyzacje API
+            <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>WKRÓTCE</span>
           </Link>
         </div>
         
@@ -465,7 +480,6 @@ export default async function Home({ searchParams }) {
 
                 <div style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
                   
-                  {/* --- NOWE, 3-GODZINNE ZAKRESY --- */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                     <div>
                       <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🟢 Najtańsze okno (3 godz.)</p>
@@ -676,6 +690,55 @@ export default async function Home({ searchParams }) {
             )}
           </div>
         )}
+
+        {/* ========================================= */}
+        {/* SEKCJA 3: ZAKŁADKA API & SMART HOME (WKRÓTCE) */}
+        {/* ========================================= */}
+        {activeTab === 'api' && (
+          <div style={{ animation: 'fadeIn 0.3s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+              <span style={{ backgroundColor: '#f3e8ff', color: '#7e22ce', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Dla zaawansowanych</span>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#0f172a' }}>Integracja Home Assistant</h2>
+            </div>
+            
+            <div style={{ backgroundColor: '#ffffff', padding: '3rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', alignItems: 'center' }}>
+                <div style={{ flex: '1 1 400px' }}>
+                  <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>Twój dom, Twoje zasady. Nasze dane.</h3>
+                  <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                    Pracujemy nad otwartym API, które pozwoli Ci pobrać nasze wyliczenia (najtańsze okna 3-godzinne, przewidywania anomalii) bezpośrednio do Twojego systemu Smart Home (Home Assistant, Node-RED, Fibaro).
+                  </p>
+                  <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
+                    Dzięki temu Twoja pompa ciepła, bojler czy ładowarka EV włączą się <strong>całkowicie automatycznie</strong>, gdy prąd będzie najtańszy lub ujemny. Bez Twojej ingerencji.
+                  </p>
+                  <button style={{ padding: '12px 24px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                    Zapisz się na listę Early Access
+                  </button>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '1rem' }}>* Przewidywany koszt abonamentu API: od 49.99 PLN/msc.</p>
+                </div>
+                
+                <div style={{ flex: '1 1 400px', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                  </div>
+                  <div style={{ color: '#a855f7', marginBottom: '8px', fontWeight: 'bold' }}>GET /api/v1/forecast/best-window</div>
+                  <div style={{ paddingLeft: '1rem', borderLeft: '2px solid #334155' }}>
+                    {"{"}<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowEnd : '14:00'}"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(2) : '-0.05'}</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"trigger_automation"</span>: <span style={{ color: '#fbbf24' }}>true</span><br/>
+                    {"}"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
