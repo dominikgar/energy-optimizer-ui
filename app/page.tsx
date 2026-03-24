@@ -41,14 +41,16 @@ export default async function Home({ searchParams }) {
 
   // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
   let todayForecast = null;
-  let forecastError = null; // Zmienna trzymająca powód błędu
+  let forecastError = null; 
   
   try {
     const today = new Date();
     const todayStr = today.toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }); 
     
-    // ZMIANA: Usunęliśmy agresywny cache Next.js (cache: 'no-store'), aby zawsze pobierał świeże dane!
-    const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '${todayStr}'`, { cache: 'no-store' });
+    // ZMIANA TUTAJ: Zastępujemy spacje bezpiecznymi znakami %20
+    const targetUrl = `https://api.raporty.pse.pl/api/rce-pln?$filter=doba%20eq%20'${todayStr}'`;
+    
+    const pseRes = await fetch(targetUrl, { cache: 'no-store' });
     
     if (pseRes.ok) {
       const pseJson = await pseRes.json();
@@ -184,7 +186,6 @@ export default async function Home({ searchParams }) {
               <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#ef4444' }}>⚠️ Wystąpił problem z pobraniem danych</p>
               <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>{forecastError || "Ładowanie najnowszych cen giełdowych PSE..."}</p>
             </div>
-            {/* PRZYCISK WYMUSZENIA ODŚWIEŻENIA */}
             <a href="/" style={{ padding: '10px 20px', backgroundColor: '#333', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', border: '1px solid #444' }}>
               Wymuś pobranie 🔄
             </a>
