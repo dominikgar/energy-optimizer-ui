@@ -1,10 +1,36 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
 // Zabezpieczenie przed cache'owaniem - API zawsze musi zwracać świeże dane
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // --- 0. WERYFIKACJA KLUCZA API (AUTHENTICATION) ---
+    // Pobieramy nagłówek Authorization (np. "Bearer demo_premium_key_123")
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: "Brak autoryzacji. Podaj klucz API w nagłówku 'Authorization: Bearer <twój_klucz>'." }, 
+        { status: 401 }
+      );
+    }
+
+    const apiKey = authHeader.split(' ')[1];
+    
+    // MOCK: Weryfikacja klucza. 
+    // Docelowo: 'SELECT * FROM api_keys WHERE key = $1 AND is_active = true' (z Twojej bazy danych)
+    const validApiKey = process.env.PREMIUM_API_KEY || 'demo_premium_key_123';
+
+    if (apiKey !== validApiKey) {
+      return NextResponse.json(
+        { error: "Nieprawidłowy klucz API lub brak aktywnej subskrypcji PRO." }, 
+        { status: 403 }
+      );
+    }
+    // ---------------------------------------------------
+
+
     // 1. Ustalenie aktualnej daty dla polskiej strefy czasowej
     const now = new Date();
     const polandTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
