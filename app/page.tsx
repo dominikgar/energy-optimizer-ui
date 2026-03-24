@@ -64,9 +64,9 @@ export default async function Home({ searchParams }) {
   }
 
   // --- LOGIKA SUBSKRYPCJI (MOCK) ---
-  // Na razie ustawiamy na 'false', żeby przetestować widok zablokowany (Paywall)
-  // W przyszłości pobierzemy to ze Stripe/Clerk
-  const isPremiumUser = false; 
+  // USTAWIŁEM NA 'true', żebyś mógł w spokoju podejrzeć i ocenić wykres :)
+  // (Później zmienisz na false przy wdrażaniu Stripe)
+  const isPremiumUser = true; 
 
   // --- 1. POBIERANIE DANYCH NA ŻYWO Z PSE (RADAR NA DZIŚ) ---
   let todayForecast = null;
@@ -230,7 +230,7 @@ export default async function Home({ searchParams }) {
         </div>
 
         {todayForecast ? (
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', borderRadius: '24px', overflow: 'hidden' }}>
             
             {/* Paywall Overlay - Pojawia się tylko gdy !isPremiumUser */}
             {!isPremiumUser && (
@@ -238,13 +238,13 @@ export default async function Home({ searchParams }) {
                 position: 'absolute', 
                 inset: 0, 
                 backgroundColor: 'rgba(10, 10, 10, 0.7)', 
-                backdropFilter: 'blur(8px)', 
+                backdropFilter: 'blur(10px)', 
+                WebkitBackdropFilter: 'blur(10px)',
                 zIndex: 10, 
                 display: 'flex', 
                 flexDirection: 'column',
                 justifyContent: 'center', 
                 alignItems: 'center',
-                borderRadius: '24px',
                 padding: '2rem',
                 textAlign: 'center'
               }}>
@@ -260,7 +260,7 @@ export default async function Home({ searchParams }) {
               </div>
             )}
 
-            <div style={{ background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', borderRadius: '24px', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
+            <div style={{ background: 'linear-gradient(145deg, #18181b, #0f0f11)', padding: '2rem', border: '1px solid #333', boxShadow: '0 15px 35px rgba(0,0,0,0.4)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                 <div>
