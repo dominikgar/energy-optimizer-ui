@@ -21,7 +21,8 @@ export async function POST(req: Request) {
 
     // 3. Tworzymy sesję zakupową Stripe (Checkout Session)
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'blik', 'p24'], // Dodajemy polskie metody płatności!
+      // BLIK i P24 nie obsługują automatycznych subskrypcji. Zostawiamy tylko karty (w tym Apple/Google Pay).
+      payment_method_types: ['card'], 
       line_items: [
         {
           price_data: {
