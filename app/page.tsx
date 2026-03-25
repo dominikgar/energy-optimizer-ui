@@ -206,7 +206,7 @@ export default async function Home({ searchParams }) {
                 <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔌</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>API & Smart Home</h3>
-                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Podłącz system pod Home Assistant. Automatycznie uruchamiaj pompę ciepła i bojler tylko w najtańszych godzinach.</p>
+                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Pełna integracja z panelem Energia w Home Assistant. Zautomatyzuj pompę ciepła na podstawie naszych danych giełdowych.</p>
                 </div>
               </div>
             </div>
@@ -766,7 +766,7 @@ export default async function Home({ searchParams }) {
                 <div style={{ flex: '1 1 350px' }}>
                   <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>API jest już gotowe do działania!</h3>
                   <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                    Pobieraj nasze wyliczenia bezpośrednio do swojego Home Assistanta. Zautomatyzuj ogrzewanie i ładuj urządzenia dokładnie wtedy, gdy prąd kosztuje najmniej.
+                    Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów i automatycznie uruchamiaj pompę ciepła w najtańszych godzinach.
                   </p>
                   
                   {/* SEKRETNY KLUCZ API */}
@@ -792,7 +792,13 @@ export default async function Home({ searchParams }) {
         value_template: "{{ value_json.recommended_end }}"
       - name: "Energy Best Window Avg Price"
         value_template: "{{ value_json.avg_price_pln }}"
-        unit_of_measurement: "PLN/kWh"`}
+        unit_of_measurement: "PLN/kWh"
+      
+      # Użyj tego sensora w panelu Energia (Energy Dashboard) do śledzenia kosztów
+      - name: "Current Energy Price"
+        value_template: "{{ value_json.current_price_pln }}"
+        unit_of_measurement: "PLN/kWh"
+        device_class: monetary`}
                   </pre>
                 </div>
                 
@@ -813,6 +819,7 @@ export default async function Home({ searchParams }) {
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowEnd : '14:00'}"</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(4) : '-0.0500'}</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"current_price_pln"</span>: <span style={{ color: '#f87171' }}>0.2500</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"trigger_automation"</span>: <span style={{ color: '#fbbf24' }}>true</span><br/>
                     {"}"}
                   </div>
