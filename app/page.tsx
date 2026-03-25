@@ -6,17 +6,7 @@ import { Pool } from 'pg';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton } from '@clerk/nextjs';
-import {
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  Bar,
-  ComposedChart,
-  Legend
-} from 'recharts';
+import Chart from './Chart';
 
 // --- INICJALIZACJA BAZY DANYCH ---
 const pool = new Pool({
@@ -33,30 +23,6 @@ const IconZap = () => (
 const IconInfo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
 );
-
-function EnergyChart({ data, g11Rate }) {
-  if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
-
-  return (
-    <div style={{ width: '100%', height: '400px', marginTop: '2rem' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-          <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickMargin={12} />
-          <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}kWh`} />
-          <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v.toFixed(2)}zł`} />
-          <RechartsTooltip 
-            contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-          />
-          <Legend verticalAlign="top" align="right" height={40} iconType="circle" />
-          <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
-          <Line yAxisId="right" type="monotone" dataKey="price" name="Cena RCE (Giełda)" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-          <Line yAxisId="right" type="step" dataKey="g11Price" name="Twoja Stawka G11" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
 
 function UploadSection() {
   return (
@@ -525,7 +491,6 @@ export default async function Home({ searchParams }) {
           <Link href={`/?tab=history&days=${days}&provider=${selectedProvider}`} scroll={false} style={{ padding: '0.8rem 0', color: activeTab === 'history' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'history' ? '2px solid #3b82f6' : '2px solid transparent', textDecoration: 'none', fontWeight: '600', fontSize: '1.1rem' }}>
             Profil Historyczny
           </Link>
-          {/* NOWA ZAKŁADKA DORADCY */}
           <Link href={`/?tab=advisor&days=${days}&provider=${selectedProvider}`} scroll={false} style={{ padding: '0.8rem 0', color: activeTab === 'advisor' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'advisor' ? '2px solid #f59e0b' : '2px solid transparent', textDecoration: 'none', fontWeight: '600', fontSize: '1.1rem' }}>
             Doradca Taryfowy
           </Link>
@@ -591,7 +556,6 @@ export default async function Home({ searchParams }) {
                   </div>
                 </div>
 
-                {/* Szybkie statystyki */}
                 <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                   <div style={{ padding: '1.5rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px' }}>
                     <p style={{ margin: '0 0 5px', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Suma zużycia ({days} dni)</p>
@@ -608,10 +572,10 @@ export default async function Home({ searchParams }) {
                 </div>
 
                 <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem' }}>
-                  <EnergyChart data={chartData} g11Rate={currentTariff.price_per_kwh} />
+                  <Chart data={chartData} g11Rate={currentTariff.price_per_kwh} />
                 </div>
 
-                {/* UKRYTY UPLOAD DANYCH (Rozwijany) */}
+                <details className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
                   <summary style={{ fontWeight: '600', color: '#3b82f6', fontSize: '1.05rem', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>⚙️</span> Zaktualizuj dane (wgraj nowy plik CSV)
                   </summary>
@@ -901,17 +865,15 @@ export default async function Home({ searchParams }) {
                 <div style={{ flex: '1 1 350px' }}>
                   <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>API jest już gotowe do działania!</h3>
                   <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                    Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów i automatycznie uruchamiaj pompę ciepła w najtańszych godzinach.
+                    Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów.
                   </p>
-                  
                   <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Twój unikalny klucz API</h4>
-                    <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '10px' }}>Zabezpiecz swoje zapytania, używając nagłówka: <code>Authorization: Bearer</code></p>
                     <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', color: '#334155', fontWeight: 'bold', userSelect: 'all', fontSize: '1rem', wordBreak: 'break-all' }}>
                       {userApiKey || 'Brak klucza. Skontaktuj się z administratorem.'}
                     </code>
                   </div>
-
+                  
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
                   
                   <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
