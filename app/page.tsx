@@ -460,7 +460,13 @@ export default async function Home({ searchParams }) {
             ⚡ Energy Optimizer AI
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span className="hide-on-mobile" style={{ color: '#64748b', fontSize: '0.9rem' }}>Zarządzaj kontem ➔</span>
+            {isPremiumUser && (
+              <form action="/api/customer_portal" method="POST" className="hide-on-mobile">
+                <button type="submit" style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.95rem', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>
+                  Zarządzaj subskrypcją ⚙️
+                </button>
+              </form>
+            )}
             <UserButton afterSignOutUrl="/" />
           </div>
         </header>
