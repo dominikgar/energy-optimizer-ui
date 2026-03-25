@@ -1,12 +1,19 @@
 import { NextResponse, NextRequest } from 'next/server';
+// @ts-ignore - ignorujemy brak typów dla biblioteki pg
+import { Pool } from 'pg';
 
 // Zabezpieczenie przed cache'owaniem - API zawsze musi zwracać świeże dane
 export const dynamic = 'force-dynamic';
 
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 export async function GET(request: NextRequest) {
   try {
-    // --- 0. WERYFIKACJA KLUCZA API (AUTHENTICATION) ---
-    // Pobieramy nagłówek Authorization (np. "Bearer demo_premium_key_123")
+    // --- 0. WERYFIKACJA KLUCZA API W BAZIE DANYCH (NEON) ---
+    // Pobieramy nagłówek Authorization (np. "Bearer eo_live_12345...")
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,11 +25,14 @@ export async function GET(request: NextRequest) {
 
     const apiKey = authHeader.split(' ')[1];
     
-    // MOCK: Weryfikacja klucza. 
-    // Docelowo: 'SELECT * FROM api_keys WHERE key = $1 AND is_active = true' (z Twojej bazy danych)
-    const validApiKey = process.env.PREMIUM_API_KEY || 'demo_premium_key_123';
+    // Odpytujemy bazę Neon, czy taki klucz istnieje i czy subskrypcja jest aktywna
+    const { rows } = await pool.query(
+      'SELECT is_active FROM user_subscriptions WHERE api_key = $1', 
+      [apiKey]
+    );
 
-    if (apiKey !== validApiKey) {
+    // Jeśli klucza nie ma w bazie, lub is_active wynosi false -> blokujemy dostęp
+    if (rows.length === 0 || !rows[0].is_active) {
       return NextResponse.json(
         { error: "Nieprawidłowy klucz API lub brak aktywnej subskrypcji PRO." }, 
         { status: 403 }
@@ -164,7 +174,7 @@ export async function GET(request: NextRequest) {
       recommended_start: bestWindowStart,
       recommended_end: bestWindowEnd,
       avg_price_pln: Number(bestWindowAvgPrice.toFixed(4)),
-      current_price_pln: Number(currentPricePln.toFixed(4)), // Dodano aktualną cenę dla panelu Energia
+      current_price_pln: Number(currentPricePln.toFixed(4)), 
       trigger_automation: true,
       data_source: "PSE"
     });
