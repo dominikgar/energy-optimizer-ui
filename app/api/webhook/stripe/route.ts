@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import crypto from 'crypto'; // Dodajemy do generowania unikalnego API Key
 // @ts-ignore - ignorujemy brak typów dla biblioteki pg
 import { Pool } from 'pg';
 
@@ -49,19 +50,24 @@ export async function POST(req: Request) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
 
+        // Generujemy unikalny klucz API dla nowego klienta (format: eo_live_ + 32 losowe znaki hex)
+        const generatedApiKey = 'eo_live_' + crypto.randomBytes(16).toString('hex');
+
         // Zapisujemy lub aktualizujemy status w naszej bazie Neon (PostgreSQL)
         await pool.query(`
-          INSERT INTO user_subscriptions (user_id, stripe_customer_id, stripe_subscription_id, plan_type, is_active, current_period_end)
-          VALUES ($1, $2, $3, 'pro', true, $4)
+          INSERT INTO user_subscriptions (user_id, stripe_customer_id, stripe_subscription_id, plan_type, is_active, current_period_end, api_key)
+          VALUES ($1, $2, $3, 'pro', true, $4, $5)
           ON CONFLICT (user_id) DO UPDATE 
           SET stripe_customer_id = EXCLUDED.stripe_customer_id,
               stripe_subscription_id = EXCLUDED.stripe_subscription_id,
               plan_type = 'pro',
               is_active = true,
-              current_period_end = EXCLUDED.current_period_end
-        `, [userId, customerId, subscriptionId, currentPeriodEnd]);
+              current_period_end = EXCLUDED.current_period_end,
+              -- COALESCE dba o to, by nie nadpisać klucza API, jeśli użytkownik już go wcześniej miał (np. przy odnowieniu subskrypcji)
+              api_key = COALESCE(user_subscriptions.api_key, EXCLUDED.api_key)
+        `, [userId, customerId, subscriptionId, currentPeriodEnd, generatedApiKey]);
 
-        console.log(`[SUCCESS] Aktywowano PRO dla użytkownika: ${userId}`);
+        console.log(`[SUCCESS] Aktywowano PRO dla użytkownika: ${userId}. Wygenerowano/zachowano API KEY.`);
       } catch (dbError) {
         console.error('[ERROR] Błąd zapisu do bazy danych:', dbError);
         return NextResponse.json({ error: 'Database error' }, { status: 500 });
@@ -74,7 +80,8 @@ export async function POST(req: Request) {
      const subscription = event.data.object as Stripe.Subscription;
      
      try {
-         // Wyłączamy PRO w bazie, gdy subskrypcja wygaśnie lub zostanie anulowana w Stripe
+         // Wyłączamy PRO w bazie, gdy subskrypcja wygaśnie lub zostanie anulowana w Stripe.
+         // Celowo NIE usuwamy api_key, żeby móc je ponownie aktywować przy powrocie klienta.
          await pool.query(
              'UPDATE user_subscriptions SET is_active = false WHERE stripe_subscription_id = $1',
              [subscription.id]
