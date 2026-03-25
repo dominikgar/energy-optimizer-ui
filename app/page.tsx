@@ -460,9 +460,9 @@ export default async function Home({ searchParams }) {
             ⚡ Energy Optimizer AI
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* WSTRZYKNIĘCIE LINKU DO PORTALU PROSTO DO MENU CLERKA */}
-            <UserButton afterSignOutUrl="/">
-              {isPremiumUser && (
+            {/* ZMIANA: Zmodyfikowaliśmy warunkowe renderowanie menu Clerka, by uniknąć wyrzucania błędu 500 na serwerze */}
+            {isPremiumUser ? (
+              <UserButton afterSignOutUrl="/">
                 <UserButton.MenuItems>
                   <UserButton.Link 
                     label="Zarządzaj subskrypcją" 
@@ -475,8 +475,10 @@ export default async function Home({ searchParams }) {
                     } 
                   />
                 </UserButton.MenuItems>
-              )}
-            </UserButton>
+              </UserButton>
+            ) : (
+              <UserButton afterSignOutUrl="/" />
+            )}
           </div>
         </header>
 
