@@ -780,8 +780,20 @@ export default async function Home({ searchParams }) {
 
                   {/* KOD YAML DLA HA */}
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
+                  
+                  {/* OSTRZEŻENIE PRZED BŁĘDEM 'platform' */}
+                  <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
+                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Gdzie to wkleić?</p>
+                    <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
+                      Home Assistant wymaga, aby integracja <code>rest:</code> była główną sekcją. Wklej ten kod na samym końcu pliku <code>configuration.yaml</code>. <strong>Nie wklejaj go</strong> pod istniejącą sekcją <code>sensor:</code>, bo otrzymasz błąd brakującej platformy!
+                    </p>
+                  </div>
+
                   <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '12px', fontSize: '0.85rem', overflowX: 'auto', lineHeight: '1.5', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
-{`rest:
+{`# UWAGA: Wklej to na samym dole pliku configuration.yaml.
+# NIE wklejaj tego wewnątrz istniejącej sekcji "sensor:".
+# Konfiguracja "rest:" to osobna, główna sekcja.
+rest:
   - resource: "https://twoja-domena.vercel.app/api/v1/forecast/best-window"
     headers:
       Authorization: "Bearer demo_premium_key_123"
