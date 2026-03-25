@@ -219,16 +219,19 @@ export default async function Home({ searchParams }) {
   const activeTab = resolvedParams.tab || 'radar';
   const days = parseInt(resolvedParams.days) || 3;
 
-  // --- ZABEZPIECZENIE FUNKCJI PREMIUM W BAZIE DANYCH ---
+  // --- ZABEZPIECZENIE FUNKCJI PREMIUM W BAZIE DANYCH ORAZ POBRANIE API KEY ---
   let isPremiumUser = false;
+  let userApiKey = null;
+  
   if (userId) {
     try {
       const subQuery = await pool.query(
-        'SELECT is_active FROM user_subscriptions WHERE user_id = $1', 
+        'SELECT is_active, api_key FROM user_subscriptions WHERE user_id = $1', 
         [userId]
       );
       if (subQuery.rows.length > 0 && subQuery.rows[0].is_active) {
         isPremiumUser = true;
+        userApiKey = subQuery.rows[0].api_key;
       }
     } catch (error) {
       console.error("Błąd pobierania statusu subskrypcji:", error);
@@ -805,10 +808,10 @@ export default async function Home({ searchParams }) {
                   
                   {/* SEKRETNY KLUCZ API */}
                   <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Klucz autoryzacyjny (API Key)</h4>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Twój unikalny klucz API</h4>
                     <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '10px' }}>Zabezpiecz swoje zapytania, używając nagłówka: <code>Authorization: Bearer</code></p>
-                    <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', color: '#334155', fontWeight: 'bold', userSelect: 'all', fontSize: '1rem' }}>
-                      demo_premium_key_123
+                    <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', color: '#334155', fontWeight: 'bold', userSelect: 'all', fontSize: '1rem', wordBreak: 'break-all' }}>
+                      {userApiKey || 'Brak klucza. Skontaktuj się z administratorem.'}
                     </code>
                   </div>
 
@@ -829,7 +832,7 @@ export default async function Home({ searchParams }) {
 rest:
   - resource: "https://twoja-domena.vercel.app/api/v1/forecast/best-window"
     headers:
-      Authorization: "Bearer demo_premium_key_123"
+      Authorization: "Bearer ${userApiKey || 'TWÓJ_KLUCZ_API'}"
     sensor:
       - name: "Energy Best Window Start"
         value_template: "{{ value_json.recommended_start }}"
