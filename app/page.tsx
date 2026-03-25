@@ -219,7 +219,21 @@ export default async function Home({ searchParams }) {
   const activeTab = resolvedParams.tab || 'radar';
   const days = parseInt(resolvedParams.days) || 3;
 
-  const isPremiumUser = true; 
+  // --- ZABEZPIECZENIE FUNKCJI PREMIUM W BAZIE DANYCH ---
+  let isPremiumUser = false;
+  if (userId) {
+    try {
+      const subQuery = await pool.query(
+        'SELECT is_active FROM user_subscriptions WHERE user_id = $1', 
+        [userId]
+      );
+      if (subQuery.rows.length > 0 && subQuery.rows[0].is_active) {
+        isPremiumUser = true;
+      }
+    } catch (error) {
+      console.error("Błąd pobierania statusu subskrypcji:", error);
+    }
+  }
 
   let todayForecast = null;
   let forecastError = null; 
@@ -761,6 +775,26 @@ export default async function Home({ searchParams }) {
               <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#0f172a' }}>Integracja Home Assistant</h2>
             </div>
             
+            {!isPremiumUser ? (
+              <div style={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                borderRadius: '24px',
+                border: '1px solid #e2e8f0',
+                padding: '4rem 2rem',
+                textAlign: 'center',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.05)'
+              }}>
+                <h3 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: '#0f172a', fontWeight: 'bold' }}>Zautomatyzuj swój dom z API Premium</h3>
+                <p style={{ color: '#475569', maxWidth: '500px', margin: '0 auto 2rem', lineHeight: '1.5' }}>
+                  Podłącz system pod Home Assistant i uruchamiaj pompę ciepła tylko w najtańszych godzinach. Dostęp do API giełdowego jest dostępny tylko w pakiecie PRO.
+                </p>
+                <form action="/api/checkout_sessions" method="POST">
+                   <button type="submit" style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}>
+                    Odblokuj za 14.99 PLN / miesiąc
+                   </button>
+                </form>
+              </div>
+            ) : (
             <div className="mobile-card-padding" style={{ backgroundColor: '#ffffff', padding: '3rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', alignItems: 'flex-start' }}>
                 <div style={{ flex: '1 1 350px' }}>
@@ -783,9 +817,9 @@ export default async function Home({ searchParams }) {
                   
                   {/* OSTRZEŻENIE PRZED BŁĘDAMI YAML */}
                   <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
-                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Dlaczego sensor nie pojawia się w Panelu Energia?</p>
+                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Błędy "Map keys must be unique" lub brak "platform"?</p>
                     <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
-                      Home Assistant wymaga parametru <code>state_class: measurement</code> (dodanego w kodzie poniżej). Co ważniejsze, HA musi zapisać <strong>pierwsze statystyki</strong>, zanim sensor pojawi się na liście. Po restarcie HA musisz <strong>poczekać od 15 minut do nawet 2 godzin</strong>. To całkowicie normalne w Home Assistant!
+                      Pojawiają się one, gdy kod zostanie źle wklejony (np. zduplikujesz słowo <code>sensor:</code> w pliku konfiguracyjnym). <strong>Rozwiązanie:</strong> Usuń całkowicie naszą poprzednią integrację z pliku. Skopiuj <strong>cały poniższy blok</strong> i wklej go na samym dole pliku <code>configuration.yaml</code>. Upewnij się, że słowo <code>rest:</code> przylega do lewej krawędzi!
                     </p>
                   </div>
 
@@ -837,6 +871,7 @@ rest:
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
 
