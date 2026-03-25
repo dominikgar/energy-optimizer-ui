@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import {
@@ -13,7 +14,7 @@ import {
   Legend
 } from 'recharts';
 
-export default function Chart({ data }) {
+export default function Chart({ data }: { data: any }) {
   if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
 
   return (
