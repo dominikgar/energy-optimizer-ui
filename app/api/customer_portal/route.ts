@@ -15,7 +15,8 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-export async function POST(req: Request) {
+// ZMIANA: Zmieniliśmy POST na GET, ponieważ przycisk w menu Clerka działa jak zwykły link
+export async function GET(req: Request) {
   try {
     // 1. Sprawdzamy kto jest zalogowany
     const { userId } = auth();
