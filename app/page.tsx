@@ -783,9 +783,9 @@ export default async function Home({ searchParams }) {
                   
                   {/* OSTRZEŻENIE PRZED BŁĘDAMI YAML */}
                   <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
-                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Błędy "Map keys must be unique" lub brak "platform"?</p>
+                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Dlaczego sensor nie pojawia się w Panelu Energia?</p>
                     <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
-                      Pojawiają się one, gdy kod zostanie źle wklejony (np. zduplikujesz słowo <code>sensor:</code> w pliku konfiguracyjnym). <strong>Rozwiązanie:</strong> Usuń całkowicie naszą poprzednią integrację z pliku. Skopiuj <strong>cały poniższy blok</strong> i wklej go na samym dole pliku <code>configuration.yaml</code>. Upewnij się, że słowo <code>rest:</code> przylega do lewej krawędzi!
+                      Home Assistant wymaga parametru <code>state_class: measurement</code> (dodanego w kodzie poniżej). Co ważniejsze, HA musi zapisać <strong>pierwsze statystyki</strong>, zanim sensor pojawi się na liście. Po restarcie HA musisz <strong>poczekać od 15 minut do nawet 2 godzin</strong>. To całkowicie normalne w Home Assistant!
                     </p>
                   </div>
 
@@ -809,7 +809,7 @@ rest:
       - name: "Current Energy Price"
         value_template: "{{ value_json.current_price_pln }}"
         unit_of_measurement: "PLN/kWh"
-        device_class: monetary`}
+        state_class: measurement`}
                   </pre>
                 </div>
                 
