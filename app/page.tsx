@@ -6,7 +6,17 @@ import { Pool } from 'pg';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton } from '@clerk/nextjs';
-import Chart from './Chart';
+import {
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Bar,
+  ComposedChart,
+  Legend
+} from 'recharts';
 
 // --- INICJALIZACJA BAZY DANYCH ---
 const pool = new Pool({
@@ -23,6 +33,30 @@ const IconZap = () => (
 const IconInfo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
 );
+
+function EnergyChart({ data, g11Rate }) {
+  if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
+
+  return (
+    <div style={{ width: '100%', height: '400px', marginTop: '2rem' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickMargin={12} />
+          <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}kWh`} />
+          <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v.toFixed(2)}zł`} />
+          <RechartsTooltip 
+            contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+          />
+          <Legend verticalAlign="top" align="right" height={40} iconType="circle" />
+          <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
+          <Line yAxisId="right" type="monotone" dataKey="price" name="Cena RCE (Giełda)" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+          <Line yAxisId="right" type="step" dataKey="g11Price" name="Twoja Stawka G11" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 function UploadSection() {
   return (
@@ -574,10 +608,10 @@ export default async function Home({ searchParams }) {
                 </div>
 
                 <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem' }}>
-                  <Chart data={chartData} g11Rate={currentTariff.price_per_kwh} />
+                  <EnergyChart data={chartData} g11Rate={currentTariff.price_per_kwh} />
                 </div>
 
-                <details className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
+                {/* UKRYTY UPLOAD DANYCH (Rozwijany) */}
                   <summary style={{ fontWeight: '600', color: '#3b82f6', fontSize: '1.05rem', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>⚙️</span> Zaktualizuj dane (wgraj nowy plik CSV)
                   </summary>
@@ -867,13 +901,68 @@ export default async function Home({ searchParams }) {
                 <div style={{ flex: '1 1 350px' }}>
                   <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>API jest już gotowe do działania!</h3>
                   <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                    Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów.
+                    Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów i automatycznie uruchamiaj pompę ciepła w najtańszych godzinach.
                   </p>
+                  
                   <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Twój unikalny klucz API</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '10px' }}>Zabezpiecz swoje zapytania, używając nagłówka: <code>Authorization: Bearer</code></p>
                     <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', color: '#334155', fontWeight: 'bold', userSelect: 'all', fontSize: '1rem', wordBreak: 'break-all' }}>
                       {userApiKey || 'Brak klucza. Skontaktuj się z administratorem.'}
                     </code>
+                  </div>
+
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
+                  
+                  <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
+                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Błędy "Map keys must be unique"?</p>
+                    <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
+                      Usuń całkowicie naszą poprzednią integrację z pliku. Skopiuj <strong>cały poniższy blok</strong> i wklej go na samym dole pliku <code>configuration.yaml</code>. Upewnij się, że słowo <code>rest:</code> przylega do lewej krawędzi!
+                    </p>
+                  </div>
+
+                  <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '12px', fontSize: '0.85rem', overflowX: 'auto', lineHeight: '1.5', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
+{`# UWAGA: Wklej ten kod na samym końcu pliku configuration.yaml
+# Upewnij się, że słowo "rest:" nie ma przed sobą żadnych spacji.
+rest:
+  - resource: "https://twoja-domena.vercel.app/api/v1/forecast/best-window"
+    headers:
+      Authorization: "Bearer ${userApiKey || 'TWÓJ_KLUCZ_API'}"
+    sensor:
+      - name: "Energy Best Window Start"
+        value_template: "{{ value_json.recommended_start }}"
+      - name: "Energy Best Window End"
+        value_template: "{{ value_json.recommended_end }}"
+      - name: "Energy Best Window Avg Price"
+        value_template: "{{ value_json.avg_price_pln }}"
+        unit_of_measurement: "PLN/kWh"
+      
+      - name: "Current Energy Price"
+        value_template: "{{ value_json.current_price_pln }}"
+        unit_of_measurement: "PLN/kWh"
+        state_class: measurement`}
+                  </pre>
+                </div>
+                
+                <div className="chart-scroll-box" style={{ flex: '1 1 350px', minWidth: 0, maxWidth: '100%', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                  </div>
+                  <div style={{ color: '#a855f7', marginBottom: '8px', fontWeight: 'bold' }}>GET /api/v1/forecast/best-window</div>
+                  <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '15px' }}>Przykładowa odpowiedź serwera (JSON):</p>
+                  
+                  <div style={{ paddingLeft: '1rem', borderLeft: '2px solid #334155', minWidth: '350px' }}>
+                    {"{"}<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"status"</span>: <span style={{ color: '#a3e635' }}>"success"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump_or_ev"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowEnd : '14:00'}"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(4) : '-0.0500'}</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"current_price_pln"</span>: <span style={{ color: '#f87171' }}>0.2500</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"trigger_automation"</span>: <span style={{ color: '#fbbf24' }}>true</span><br/>
+                    {"}"}
                   </div>
                 </div>
               </div>
