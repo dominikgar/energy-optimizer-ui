@@ -99,7 +99,7 @@ export default async function Home({ searchParams }) {
               Zapanuj nad swoim rachunkiem za prąd
             </h1>
             <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 3rem' }}>
-              Wgraj swój plik z Taurona i natychmiast dowiedz się, ile realnie kosztuje Cię prąd na giełdzie. Odkryj swój potencjał oszczędności.
+              Przekonaj się, jak Twoje codzienne nawyki wpływają na rachunki. Wgraj historyczne dane od operatora, zidentyfikuj swoje "wampiry energetyczne" i sprawdź, ile mógłbyś zaoszczędzić dzięki inteligentnemu planowaniu.
             </p>
             <SignInButton mode="modal">
               <button style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'transform 0.2s' }}>
@@ -137,7 +137,6 @@ export default async function Home({ searchParams }) {
                 </div>
               </div>
 
-              {/* POPRAWKA: Dodano minWidth: 0 oraz maxWidth: '100%' dla naprawienia szerokości na mobile */}
               <div className="mobile-card-padding" style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '10px' }}>
                     <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Wyłącznie w wersji PRO</span>
