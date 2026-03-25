@@ -459,26 +459,24 @@ export default async function Home({ searchParams }) {
           <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>
             ⚡ Energy Optimizer AI
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* ZMIANA: Zmodyfikowaliśmy warunkowe renderowanie menu Clerka, by uniknąć wyrzucania błędu 500 na serwerze */}
-            {isPremiumUser ? (
-              <UserButton afterSignOutUrl="/">
-                <UserButton.MenuItems>
-                  <UserButton.Link 
-                    label="Zarządzaj subskrypcją" 
-                    href="/api/customer_portal" 
-                    labelIcon={
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                    } 
-                  />
-                </UserButton.MenuItems>
-              </UserButton>
-            ) : (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {/* ZMIANA: Zunifikowana "Kapsułka" Menu omijająca ograniczenia Next.js Server Components */}
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: '30px', padding: '6px 6px 6px 16px', gap: '12px', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+              {isPremiumUser && (
+                <>
+                  <a href="/api/customer_portal" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '700' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span className="hide-on-mobile">Subskrypcja</span>
+                  </a>
+                  {/* Pionowa linia oddzielająca */}
+                  <div style={{ width: '1px', height: '20px', backgroundColor: '#e2e8f0' }}></div>
+                </>
+              )}
               <UserButton afterSignOutUrl="/" />
-            )}
+            </div>
           </div>
         </header>
 
