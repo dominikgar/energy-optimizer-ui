@@ -108,8 +108,72 @@ export default async function Home({ searchParams }) {
             </SignInButton>
           </div>
 
-          {/* SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
+          {/* SEKCJA: DARMOWY AUDYT HISTORYCZNY (PODGLĄD FREE) */}
           <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
+            <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center', flexDirection: 'row-reverse' }}>
+              
+              <div style={{ flex: '1 1 300px' }}>
+                <h2 style={{ fontSize: '2.5rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+                  Zacznij od <span style={{ color: '#3b82f6' }}>darmowego</span> audytu
+                </h2>
+                <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                  Nie musisz nic płacić, by zyskać cenną wiedzę. Wystarczy, że wgrasz plik CSV z historią zużycia ze swojego licznika (np. z eLicznik Tauron).
+                </p>
+                <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
+                  Nasz system połączy Twoje dane ze stawkami giełdowymi z tamtych dni. Błyskawicznie dowiesz się, ile dokładnie kosztował Cię prąd i o jakiej porze "przepalasz" najwięcej pieniędzy.
+                </p>
+                
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', color: '#334155', fontWeight: '500' }}>
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Dokładna analiza rachunków wstecz
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', color: '#334155', fontWeight: '500' }}>
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Identyfikacja "wampirów energetycznych"
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#334155', fontWeight: '500' }}>
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Szacowany potencjał oszczędności
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mobile-card-padding" style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '10px' }}>
+                    <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Dostępne za darmo</span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500' }}>Profil Historyczny</span>
+                 </div>
+                 
+                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1', padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                       <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Twój Koszt</p>
+                       <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900', color: '#0f172a' }}>142.50 <span style={{fontSize: '0.9rem', color: '#94a3b8', fontWeight: 'normal'}}>PLN</span></p>
+                    </div>
+                    <div style={{ flex: '1', padding: '1.2rem', backgroundColor: '#dcfce7', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
+                       <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#059669', textTransform: 'uppercase', fontWeight: 'bold' }}>Oszczędności</p>
+                       <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900', color: '#047857' }}>~ 16.38 <span style={{fontSize: '0.9rem', color: '#10b981', fontWeight: 'normal'}}>PLN</span></p>
+                    </div>
+                 </div>
+
+                 <div style={{ padding: '1.2rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px', marginBottom: '1.5rem' }}>
+                    <h4 style={{ color: '#b91c1c', margin: '0 0 5px 0', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>⚠️</span> Twój historyczny wampir
+                    </h4>
+                    <p style={{ margin: 0, color: '#7f1d1d', lineHeight: '1.4', fontSize: '0.85rem' }}>
+                      Zazwyczaj przepalałeś najwięcej w okolicach godziny <strong>19:00</strong>.
+                    </p>
+                 </div>
+
+                 {/* Mini wykresik */}
+                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '60px', opacity: 0.7 }}>
+                    {[30, 40, 25, 60, 80, 45, 30, 90, 110, 85, 50, 40].map((h, i) => (
+                      <div key={i} style={{ flex: 1, backgroundColor: i === 8 ? '#ef4444' : '#cbd5e1', height: `${h}%`, borderRadius: '2px 2px 0 0' }}></div>
+                    ))}
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
+          <div style={{ backgroundColor: '#f8fafc', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
             <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center' }}>
               
               <div style={{ flex: '1 1 300px' }}>
@@ -184,7 +248,7 @@ export default async function Home({ searchParams }) {
           </div>
 
           {/* SEKCJA KAFELKÓW */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
             <div className="app-wrapper" style={{ maxWidth: '1200px', margin: '0 auto' }}>
               <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
