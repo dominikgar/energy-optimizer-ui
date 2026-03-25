@@ -781,18 +781,17 @@ export default async function Home({ searchParams }) {
                   {/* KOD YAML DLA HA */}
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
                   
-                  {/* OSTRZEŻENIE PRZED BŁĘDEM 'platform' */}
+                  {/* OSTRZEŻENIE PRZED BŁĘDAMI YAML */}
                   <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
-                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Gdzie to wkleić?</p>
+                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Błędy "Map keys must be unique" lub brak "platform"?</p>
                     <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
-                      Home Assistant wymaga, aby integracja <code>rest:</code> była główną sekcją. Wklej ten kod na samym końcu pliku <code>configuration.yaml</code>. <strong>Nie wklejaj go</strong> pod istniejącą sekcją <code>sensor:</code>, bo otrzymasz błąd brakującej platformy!
+                      Pojawiają się one, gdy kod zostanie źle wklejony (np. zduplikujesz słowo <code>sensor:</code> w pliku konfiguracyjnym). <strong>Rozwiązanie:</strong> Usuń całkowicie naszą poprzednią integrację z pliku. Skopiuj <strong>cały poniższy blok</strong> i wklej go na samym dole pliku <code>configuration.yaml</code>. Upewnij się, że słowo <code>rest:</code> przylega do lewej krawędzi!
                     </p>
                   </div>
 
                   <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '12px', fontSize: '0.85rem', overflowX: 'auto', lineHeight: '1.5', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
-{`# UWAGA: Wklej to na samym dole pliku configuration.yaml.
-# NIE wklejaj tego wewnątrz istniejącej sekcji "sensor:".
-# Konfiguracja "rest:" to osobna, główna sekcja.
+{`# UWAGA: Wklej ten kod na samym końcu pliku configuration.yaml
+# Upewnij się, że słowo "rest:" nie ma przed sobą żadnych spacji.
 rest:
   - resource: "https://twoja-domena.vercel.app/api/v1/forecast/best-window"
     headers:
