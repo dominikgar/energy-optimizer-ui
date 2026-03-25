@@ -789,6 +789,8 @@ export default async function Home({ searchParams }) {
     sensor:
       - name: "Energy Best Window Start"
         value_template: "{{ value_json.recommended_start }}"
+      - name: "Energy Best Window End"
+        value_template: "{{ value_json.recommended_end }}"
       - name: "Energy Best Window Avg Price"
         value_template: "{{ value_json.avg_price_pln }}"
         unit_of_measurement: "PLN/kWh"`}
