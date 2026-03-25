@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import {
@@ -9,9 +8,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
   Bar,
-  ComposedChart
+  ComposedChart,
+  Legend
 } from 'recharts';
 
 export default function Chart({ data }) {
@@ -69,19 +68,33 @@ export default function Chart({ data }) {
             labelStyle={{ color: '#64748b', marginBottom: '5px' }}
           />
 
+          <Legend verticalAlign="top" height={36} wrapperStyle={{ paddingBottom: '10px' }} />
+
           {/* Słupki Zużycia (Szaro-niebieskie) */}
           <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
           
-          {/* Linia Ceny (Złota/Zielona) */}
+          {/* Linia Ceny (Zielona Giełda) */}
           <Line
             yAxisId="right"
             type="monotone"
             dataKey="price"
-            name="Cena (PLN/kWh)"
+            name="Cena RCE (Giełda)"
             stroke="#10b981"
             strokeWidth={3}
             dot={false}
             activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+          />
+
+          {/* NOWOŚĆ: Linia Ceny G11 (Czerwona przerywana) */}
+          <Line
+            yAxisId="right"
+            type="step"
+            dataKey="g11Price"
+            name="Twoja Stawka G11"
+            stroke="#ef4444"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={false}
           />
         </ComposedChart>
       </ResponsiveContainer>
