@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton } from '@clerk/nextjs';
 import {
+  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -35,10 +36,10 @@ const IconInfo = () => (
 );
 
 function EnergyChart({ data, g11Rate }) {
-  if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
+  if (!data || data.length === 0) return null;
 
   return (
-    <div style={{ width: '100%', height: '400px', marginTop: '2rem' }}>
+    <div className="w-full h-[400px] mt-8">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -153,7 +154,7 @@ export default async function Home({ searchParams }) {
     }
   }
 
-  // Odfiltrowujemy ogólny rekord G11, aby użytkownik widział tylko konkretnych operatorów (naprawa duplikatu)
+  // Odfiltrowujemy ogólny rekord G11, aby użytkownik widział tylko konkretnych operatorów
   const displayProviders = availableTariffs.filter(t => t.tariff_name !== 'G11' && t.tariff_name.startsWith('G11'));
 
   // --- 2. WIDOK LANDING PAGE (DLA GOŚCI) ---
@@ -259,27 +260,102 @@ export default async function Home({ searchParams }) {
             </div>
           </div>
 
-          {/* SEKCJA KAFELKÓW */}
+          {/* SEKCJA: DLACZEGO FORECASTING JEST WAŻNY (Z PODGLĄDEM PREMIUM) */}
           <div style={{ backgroundColor: '#f8fafc', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
+            <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center' }}>
+              
+              <div style={{ flex: '1 1 300px' }}>
+                <h2 style={{ fontSize: '2.5rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+                  Dlaczego intuicja to <span style={{ color: '#ef4444' }}>za mało?</span>
+                </h2>
+                <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                  Na taryfach dynamicznych ceny prądu potrafią zmienić się diametralnie z godziny na godzinę. Są całkowicie uzależnione od pogody — wiatru i słońca.
+                </p>
+                <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
+                  W bezchmurny weekend prąd w południe może być <strong>całkowicie darmowy</strong>. Ale wystarczy pochmurny wtorek, by wieczorne pranie kosztowało Cię 5 razy więcej niż zazwyczaj. Ręczne śledzenie tych anomalii jest uciążliwe. Nasz system analizuje giełdę za Ciebie.
+                </p>
+                
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', flex: '1 1 120px' }}>
+                     <div style={{ fontSize: '1.8rem', marginBottom: '5px' }}>☀️</div>
+                     <span style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Słoneczne południe</span>
+                     <p style={{ fontWeight: '900', color: '#10b981', margin: '5px 0 0 0', fontSize: '1.3rem' }}>-0.05 PLN</p>
+                  </div>
+                  <div style={{ padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', flex: '1 1 120px' }}>
+                     <div style={{ fontSize: '1.8rem', marginBottom: '5px' }}>☁️</div>
+                     <span style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Pochmurny wieczór</span>
+                     <p style={{ fontWeight: '900', color: '#ef4444', margin: '5px 0 0 0', fontSize: '1.3rem' }}>0.85 PLN</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mobile-card-padding" style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%', backgroundColor: '#ffffff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '10px' }}>
+                    <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Wyłącznie w wersji PRO</span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500' }}>Przykładowy radar dzienny</span>
+                 </div>
+                 
+                 <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2.5rem' }}>
+                   <div>
+                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🟢 Najtańsze okno</p>
+                      <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#10b981' }}>11:00 - 14:00</p>
+                   </div>
+                   <div className="mobile-border-left-none" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🔴 Unikaj zużycia</p>
+                      <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#ef4444' }}>19:00 - 22:00</p>
+                   </div>
+                 </div>
+                 
+                 <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby</p>
+                 
+                 {/* RESPONSIVNY KONTENER DLA MAKIETY WYKRESU */}
+                 <div className="chart-scroll-box">
+                   <div className="chart-flex-box" style={{ display: 'flex', flexDirection: 'column' }}>
+                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', paddingBottom: '5px', borderBottom: '1px solid #e2e8f0' }}>
+                        {[0.3, 0.25, 0.2, 0.35, 0.5, 0.2, -0.05, -0.02, 0.1, 0.3, 0.6, 0.85, 0.7, 0.5, 0.4].map((price, i) => {
+                           const isMin = price === -0.05;
+                           const isMax = price === 0.85;
+                           const h = Math.max(10, ((price - (-0.05)) / 0.9) * 120);
+                           return (
+                             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                               <div style={{ width: '70%', minWidth: '4px', height: `${h}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '3px 3px 0 0' }}></div>
+                             </div>
+                           )
+                        })}
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500', padding: '0 5px' }}>
+                        <span>00:00</span>
+                        <span>12:00</span>
+                        <span>23:00</span>
+                     </div>
+                   </div>
+                 </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* SEKCJA KAFELKÓW */}
+          <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
             <div className="app-wrapper" style={{ maxWidth: '1200px', margin: '0 auto' }}>
               <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
-                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Analityka i Doradca</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Łączymy Twoje dane z oficjalnymi cenami PSE. Sprawdzisz, czy rynek dynamiczny to dla Ciebie dobry wybór względem taryfy G11.</p>
                 </div>
-                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych w odpowiednich godzinach.</p>
                 </div>
-                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Prognoza na dziś (PRO)</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
                 </div>
-                <div style={{ padding: '2.5rem', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔌</div>
                   <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>API & Smart Home</h3>
                   <p style={{ color: '#64748b', lineHeight: '1.6' }}>Pełna integracja z panelem Energia w Home Assistant. Zautomatyzuj pompę ciepła na podstawie naszych danych giełdowych.</p>
@@ -921,6 +997,13 @@ export default async function Home({ searchParams }) {
 
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
                   
+                  <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
+                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Błędy "Map keys must be unique"?</p>
+                    <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
+                      Usuń całkowicie naszą poprzednią integrację z pliku. Skopiuj <strong>cały poniższy blok</strong> i wklej go na samym dole pliku <code>configuration.yaml</code>. Upewnij się, że słowo <code>rest:</code> przylega do lewej krawędzi!
+                    </p>
+                  </div>
+
                   <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '12px', fontSize: '0.85rem', overflowX: 'auto', lineHeight: '1.5', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
 {`# UWAGA: Wklej ten kod na samym końcu pliku configuration.yaml
 # Upewnij się, że słowo "rest:" nie ma przed sobą żadnych spacji.
