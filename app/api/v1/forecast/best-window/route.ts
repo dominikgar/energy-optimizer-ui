@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Ekstrakcja i normalizacja danych
-    // POPRAWKA DLA TYPESCRIPTA: Zdefiniowanie typu tablicy
     let pricesArr: { time: string, price: number }[] = [];
     
     pseJson.value.forEach((row: any) => {
@@ -125,7 +124,6 @@ export async function GET(request: NextRequest) {
         
         let endItem = pricesArr[i + elementsIn3Hours - 1]; 
         let endHour = parseInt(endItem.time.split(':')[0]);
-        // Poprawka typu - fallback do wartości tekstowej '0' dla TS
         let endMin = parseInt(endItem.time.split(':')[1] || '0', 10);
         
         if (isQuarterHourly) {
@@ -140,7 +138,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 5. Zwrócenie ustandaryzowanego JSONa dla Home Assistanta
+    // 5. Ustalenie aktualnej ceny w tym konkretnym momencie
+    const currentH = String(polandTime.getHours()).padStart(2, '0');
+    const currentM = polandTime.getMinutes();
+    let roundedM = '00';
+    
+    if (isQuarterHourly) {
+        if (currentM >= 45) roundedM = '45';
+        else if (currentM >= 30) roundedM = '30';
+        else if (currentM >= 15) roundedM = '15';
+    }
+    const currentTimeStr = `${currentH}:${roundedM}`;
+    
+    // Szukamy obiektu z ceną dla aktualnego czasu
+    const currentPriceObj = pricesArr.find(p => p.time === currentTimeStr);
+    
+    // Fallback: Jeśli z jakiegoś powodu nie znajdzie dokładnej minuty, weź pierwszą z brzegu dla bezpieczeństwa
+    const currentPricePln = currentPriceObj ? currentPriceObj.price : (pricesArr.length > 0 ? pricesArr[0].price : 0);
+
+    // 6. Zwrócenie ustandaryzowanego JSONa dla Home Assistanta
     return NextResponse.json({
       status: "success",
       date: todayStr,
@@ -148,6 +164,7 @@ export async function GET(request: NextRequest) {
       recommended_start: bestWindowStart,
       recommended_end: bestWindowEnd,
       avg_price_pln: Number(bestWindowAvgPrice.toFixed(4)),
+      current_price_pln: Number(currentPricePln.toFixed(4)), // Dodano aktualną cenę dla panelu Energia
       trigger_automation: true,
       data_source: "PSE"
     });
