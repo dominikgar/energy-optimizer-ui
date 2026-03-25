@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+// @ts-ignore - ignorujemy brak typów dla biblioteki pg
 import { Pool } from 'pg';
 
 // Zabezpieczenie przed cache'owaniem (webhooki muszą być przetwarzane na bieżąco)
