@@ -1,30 +1,58 @@
 // @ts-nocheck
 export const dynamic = "force-dynamic";
 
+import React from 'react';
 import { Pool } from 'pg';
-import Chart from './Chart';
 import Link from 'next/link';
-import UploadSection from './UploadSection';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton } from '@clerk/nextjs';
+import Chart from './Chart';
 
+// --- INICJALIZACJA BAZY DANYCH ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
+// --- KOMPONENTY POMOCNICZE (UI) WBUDOWANE W PLIK ---
+
+const IconZap = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 fill-emerald-500"><path d="M4 14.71 13.5 3l-1.33 8.29H20l-9.5 11.71 1.33-8.29H4z"/></svg>
+);
+
+const IconInfo = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+);
+
+function UploadSection() {
+  return (
+    <div style={{ border: '2px dashed #cbd5e1', borderRadius: '32px', padding: '3rem', textAlign: 'center', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
+      <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.5rem' }}>Wgraj dane z licznika</h3>
+      <p style={{ color: '#64748b', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>Obsługujemy pliki .csv z Tauron eLicznik, PGE oraz Enea. Twoje dane zostaną bezpiecznie przetworzone.</p>
+      <button style={{ padding: '12px 32px', backgroundColor: '#2563eb', color: 'white', borderRadius: '16px', fontWeight: 'bold', border: 'none', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)', cursor: 'pointer' }}>
+        Wybierz plik z dysku
+      </button>
+    </div>
+  );
+}
+
+// --- GŁÓWNA LOGIKA STRONY (SERVER COMPONENT) ---
+
 export default async function Home({ searchParams }) {
   const { userId } = auth();
-
   const resolvedParams = await Promise.resolve(searchParams || {});
+  
+  const activeTab = resolvedParams.tab || 'history';
+  const days = parseInt(resolvedParams.days) || 3;
+  const selectedProvider = resolvedParams.provider || 'G11_TAURON';
 
-  // --- STYLE GLOBALNE RESPONSOWNE DLA URZĄDZEŃ MOBILNYCH ---
+  // --- STYLE GLOBALNE ---
   const globalStyles = `
     * { box-sizing: border-box; }
     .app-wrapper { padding: 2rem 3rem; }
     .hero-title { font-size: 4.5rem; }
     
-    /* Klasy do obsługi Menu Desktop vs Mobile */
     .desktop-tabs { display: flex; gap: 2rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 3rem; flex-wrap: wrap; }
     .mobile-menu-container { display: none; }
     details.mobile-nav > summary { list-style: none; outline: none; }
@@ -54,7 +82,6 @@ export default async function Home({ searchParams }) {
       .app-wrapper { padding: 1.5rem 1rem !important; }
       .hero-title { font-size: 2.5rem !important; }
       
-      /* Przełączenie na Burger Menu */
       .desktop-tabs { display: none !important; }
       .mobile-menu-container { display: block !important; margin-bottom: 2rem; position: relative; z-index: 50; }
 
@@ -68,16 +95,42 @@ export default async function Home({ searchParams }) {
     }
   `;
 
-  // --- WIDOK DLA NIEZALOGOWANYCH (LANDING PAGE) ---
+  // --- 1. POBIERANIE DANYCH Z BAZY NEON ---
+  let isPremiumUser = false;
+  let userApiKey = null;
+  let availableTariffs = [];
+  let currentTariff = { price_per_kwh: 1.10, tariff_name: 'G11_TAURON' };
+
+  if (userId) {
+    try {
+      const sub = await pool.query('SELECT is_active, api_key FROM user_subscriptions WHERE user_id = $1', [userId]);
+      if (sub.rows.length > 0 && sub.rows[0].is_active) {
+        isPremiumUser = true;
+        userApiKey = sub.rows[0].api_key;
+      }
+      
+      const tariffs = await pool.query('SELECT tariff_name, price_per_kwh, description FROM energy_tariffs ORDER BY tariff_name ASC');
+      availableTariffs = tariffs.rows;
+      
+      const found = availableTariffs.find(t => t.tariff_name === selectedProvider);
+      if (found) currentTariff = found;
+    } catch (e) {
+      console.error("DB Error:", e);
+    }
+  }
+
+  // Odfiltrowujemy ogólny rekord G11, aby użytkownik widział tylko konkretnych operatorów
+  const displayProviders = availableTariffs.filter(t => t.tariff_name !== 'G11' && t.tariff_name.startsWith('G11'));
+
+  // --- 2. WIDOK LANDING PAGE (DLA GOŚCI) ---
   if (!userId) {
     return (
       <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%' }}>
         <style dangerouslySetInnerHTML={{__html: globalStyles}} />
         
-        {/* MOBILNY NAGŁÓWEK DLA NIEZALOGOWANYCH */}
         <header className="app-wrapper" style={{ paddingBottom: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>
-            ⚡ Energy Optimizer
+          <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconZap /> Energy Optimizer
           </div>
           <div>
             <SignInButton mode="modal">
@@ -96,14 +149,14 @@ export default async function Home({ searchParams }) {
               Nowość: Gotowe na taryfy dynamiczne 2026
             </div>
             <h1 className="hero-title" style={{ marginBottom: '1.5rem', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px' }}>
-              Zapanuj nad swoim rachunkiem za prąd
+              Oszczędzaj na prądzie,<br/>kiedy inni przepłacają.
             </h1>
             <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 3rem' }}>
-              Przekonaj się, jak Twoje codzienne nawyki wpływają na rachunki. Wgraj historyczne dane od operatora, zidentyfikuj swoje "wampiry energetyczne" i sprawdź, ile mógłbyś zaoszczędzić dzięki inteligentnemu planowaniu.
+              Pierwszy w Polsce asystent energii, który analizuje Twój profil zużycia i podpowiada, kiedy uruchomić urządzenia, by płacić nawet 40% mniej.
             </p>
             <SignInButton mode="modal">
               <button style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'transform 0.2s' }}>
-                Zacznij optymalizację za darmo
+                Zacznij darmowy audyt
               </button>
             </SignInButton>
           </div>
@@ -280,40 +333,49 @@ export default async function Home({ searchParams }) {
     );
   }
 
-  // --- ZMIENNE Z URL ---
-  const activeTab = resolvedParams.tab || 'radar';
-  const days = parseInt(resolvedParams.days) || 3;
-  const selectedProvider = resolvedParams.provider || 'G11_TAURON'; // Domyślnie Tauron
+  // --- 3. ANALIZA DANYCH HISTORYCZNYCH ---
+  let chartData = [];
+  let stats = { totalKwh: 0, costRCE: 0, costG11: 0, savings: 0, lastSync: '-' };
 
-  // --- ZABEZPIECZENIE FUNKCJI PREMIUM ORAZ POBRANIE TARYF ---
-  let isPremiumUser = false;
-  let userApiKey = null;
-  let availableTariffs = [];
-  let currentTariff = { price_per_kwh: 1.10, tariff_name: 'G11' };
-  
-  if (userId) {
+  if (activeTab === 'history') {
     try {
-      const subQuery = await pool.query('SELECT is_active, api_key FROM user_subscriptions WHERE user_id = $1', [userId]);
-      if (subQuery.rows.length > 0 && subQuery.rows[0].is_active) {
-        isPremiumUser = true;
-        userApiKey = subQuery.rows[0].api_key;
-      }
-      
-      const tariffsQuery = await pool.query('SELECT tariff_name, price_per_kwh, description FROM energy_tariffs ORDER BY tariff_name ASC');
-      availableTariffs = tariffsQuery.rows;
-      
-      const found = availableTariffs.find(t => t.tariff_name === selectedProvider);
-      if (found) {
-        currentTariff = found;
-      } else if (availableTariffs.length > 0) {
-        currentTariff = availableTariffs.find(t => t.tariff_name.startsWith('G11')) || availableTariffs[0];
-      }
-    } catch (error) {
-      console.error("Błąd pobierania danych z bazy:", error);
+      const { rows } = await pool.query(`
+        WITH hourly_prices AS (
+            SELECT DATE_TRUNC('hour', timestamp) AS hour_ts, AVG(price_pln_mwh) AS price_mwh
+            FROM energy_prices GROUP BY DATE_TRUNC('hour', timestamp)
+        )
+        SELECT c.timestamp, c.value_kwh, p.price_mwh
+        FROM energy_consumption c
+        JOIN hourly_prices p ON DATE_TRUNC('hour', c.timestamp) = p.hour_ts
+        WHERE c.user_id = $1 AND (c.type ILIKE '%pobór%' OR c.type ILIKE '%pobor%')
+        ORDER BY c.timestamp DESC LIMIT $2
+      `, [userId, days * 24]);
+
+      const g11Rate = parseFloat(currentTariff.price_per_kwh);
+
+      chartData = rows.reverse().map(row => {
+        const kwh = parseFloat(row.value_kwh);
+        const priceRCE = parseFloat(row.price_mwh) / 1000;
+        
+        stats.totalKwh += kwh;
+        stats.costRCE += (kwh * priceRCE);
+        stats.costG11 += (kwh * g11Rate);
+
+        return {
+          time: new Date(row.timestamp).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+          kwh: kwh,
+          price: priceRCE,
+          g11Price: g11Rate
+        };
+      });
+      stats.savings = stats.costG11 - stats.costRCE;
+      if (rows.length > 0) stats.lastSync = new Date(rows[0].timestamp).toLocaleString('pl-PL');
+    } catch (e) {
+      console.error(e);
     }
   }
 
-  // --- POBIERANIE DANYCH Z PSE (DLA ZAKŁADKI RADAR I API) ---
+  // --- 4. POBIERANIE DANYCH Z PSE (RADAR/API) ---
   let todayForecast = null;
   let forecastError = null; 
   
@@ -396,7 +458,6 @@ export default async function Home({ searchParams }) {
               } else {
                   endHour += 1; 
               }
-              
               if (endHour >= 24) endHour = 0;
               bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
             }
@@ -438,119 +499,67 @@ export default async function Home({ searchParams }) {
     }
   }
 
-  // --- POBIERANIE DANYCH HISTORYCZNYCH Z BAZY NEON ---
-  const hoursLimit = days * 24;
-
-  let chartData = [];
-  let stats = { costRCE: 0, costG11: 0, kwh: 0, savings: 0, savingsVsG11: 0, rangeText: '', lastSync: '' };
-  let insights = { worstHour: 0, worstCost: 0, bestHour: 0, bestPrice: 999 };
-
-  if (activeTab === 'history') {
-    try {
-      const { rows } = await pool.query(`
-        WITH hourly_prices AS (
-            SELECT DATE_TRUNC('hour', timestamp) AS hour_ts, AVG(price_pln_mwh) AS price_mwh
-            FROM energy_prices GROUP BY DATE_TRUNC('hour', timestamp)
-      )
-      SELECT c.timestamp, c.value_kwh, p.price_mwh
-      FROM energy_consumption c
-      JOIN hourly_prices p ON DATE_TRUNC('hour', c.timestamp) = p.hour_ts
-      WHERE (c.type ILIKE '%pobór%' OR c.type ILIKE '%pobor%') 
-      AND c.user_id = $1
-      ORDER BY c.timestamp DESC
-      LIMIT $2
-    `, [userId, hoursLimit]); 
-
-    if (rows.length > 0) {
-      const latestDate = new Date(rows[0].timestamp);
-      const earliestDate = new Date(rows[rows.length - 1].timestamp);
-      
-      stats.lastSync = latestDate.toLocaleString('pl-PL', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-      stats.rangeText = `${earliestDate.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })} — ${latestDate.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}`;
-
-      const hourlyAggregation = Array(24).fill(null).map(() => ({ cost: 0, priceSum: 0, count: 0 }));
-      const currentG11Rate = parseFloat(currentTariff.price_per_kwh);
-
-      chartData = [...rows].reverse().map(row => {
-        const kwh = parseFloat(row.value_kwh);
-        const price = parseFloat(row.price_mwh) / 1000;
-        const timestamp = new Date(row.timestamp);
-        const hourOfDay = timestamp.getHours();
-
-        hourlyAggregation[hourOfDay].cost += (kwh * price);
-        hourlyAggregation[hourOfDay].priceSum += price;
-        hourlyAggregation[hourOfDay].count += 1;
-
-        return {
-          time: timestamp.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
-          date: timestamp.toLocaleDateString('pl-PL', { month: 'short', day: 'numeric' }),
-          label: timestamp.toLocaleString('pl-PL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-          kwh: kwh,
-          price: price,
-          g11Price: currentG11Rate
-        };
-      });
-
-      stats.costRCE = chartData.reduce((sum, curr) => sum + (curr.kwh * curr.price), 0);
-      stats.costG11 = chartData.reduce((sum, curr) => sum + (curr.kwh * curr.g11Price), 0);
-      stats.kwh = chartData.reduce((sum, curr) => sum + curr.kwh, 0);
-      
-      // Oszczędności ze zmywarki/pralki (hipotetyczne)
-      stats.savings = stats.costRCE * 0.115;
-      
-      // Realne oszczędności Rynek vs G11
-      stats.savingsVsG11 = stats.costG11 - stats.costRCE;
-
-      hourlyAggregation.forEach((data, hour) => {
-        if (data.count > 0) {
-          if (data.cost > insights.worstCost) {
-            insights.worstCost = data.cost;
-            insights.worstHour = hour;
-          }
-          const avgPrice = data.priceSum / data.count;
-          if (avgPrice < insights.bestPrice) {
-            insights.bestPrice = avgPrice;
-            insights.bestHour = hour;
-          }
-        }
-      });
-    }
-      
-    } catch (error) {
-      console.error("Błąd bazy danych:", error);
-    }
-  }
-
-  const getBtnStyle = (btnDays) => ({
-    padding: '8px 20px',
-    backgroundColor: days === btnDays ? '#10b981' : '#f1f5f9',
-    color: days === btnDays ? '#fff' : '#64748b',
-    borderRadius: '20px',
-    textDecoration: 'none',
-    fontWeight: '600',
-    fontSize: '0.9rem',
-    transition: 'all 0.2s ease',
-    border: days === btnDays ? '1px solid #10b981' : '1px solid #e2e8f0',
-  });
-
+  // --- 5. RENDERER APLIKACJI ---
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%' }}>
-      <style dangerouslySetInnerHTML={{__html: globalStyles}} />
+      
+      {/* GLOBALNE STYLE CSS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        * { box-sizing: border-box; }
+        .app-wrapper { padding: 2rem 3rem; }
+        
+        .desktop-tabs { display: flex; gap: 2rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 3rem; flex-wrap: wrap; }
+        .mobile-menu-container { display: none; }
+        details.mobile-nav > summary { list-style: none; outline: none; }
+        details.mobile-nav > summary::-webkit-details-marker { display: none; }
+
+        .chart-scroll-box { overflow-x: visible; width: 100%; }
+        .chart-flex-box { min-width: auto; }
+        .hide-on-mobile { display: block; }
+        
+        .chart-col { position: relative; cursor: crosshair; }
+        .chart-tooltip {
+          visibility: hidden; opacity: 0; position: absolute; left: 50%; transform: translateX(-50%);
+          background-color: #1e293b; color: #fff; padding: 8px 12px; border-radius: 8px;
+          font-size: 0.8rem; line-height: 1.4; white-space: nowrap;
+          transition: opacity 0.2s ease, transform 0.2s ease; z-index: 50; pointer-events: none;
+          border: 1px solid #334155; box-shadow: 0 10px 20px rgba(0,0,0,0.2); text-align: center;
+        }
+        .chart-tooltip::after {
+          content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
+          border-width: 6px; border-style: solid; border-color: #1e293b transparent transparent transparent;
+        }
+        .chart-col:hover .chart-tooltip { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(-5px); }
+        .chart-col:hover .chart-bar-fill { opacity: 1 !important; filter: brightness(1.1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+          .app-wrapper { padding: 1.5rem 1rem !important; }
+          .desktop-tabs { display: none !important; }
+          .mobile-menu-container { display: block !important; margin-bottom: 2rem; position: relative; z-index: 50; }
+          .chart-scroll-box { overflow-x: auto !important; padding-bottom: 15px !important; -webkit-overflow-scrolling: touch; }
+          .chart-flex-box { min-width: 600px !important; }
+          .hide-on-mobile { display: none !important; }
+          .mobile-col { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 1rem !important; }
+          .mobile-border-left-none { border-left: none !important; padding-left: 0 !important; border-top: 1px solid #e2e8f0; padding-top: 1rem !important; margin-top: 0.5rem !important; width: 100%; }
+          .mobile-card-padding { padding: 1.5rem !important; }
+        }
+      `}} />
+
       <main className="app-wrapper" style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#334155' }}>
         
-        {/* HEADER GŁÓWNY ZALOGOWANEGO UŻYTKOWNIKA */}
+        {/* HEADER */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>
-            ⚡ Energy Optimizer AI
+          <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconZap /> Energy Optimizer AI
           </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Zunifikowana "Kapsułka" Menu */}
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: '30px', padding: '6px 6px 6px 16px', gap: '12px', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
               {isPremiumUser && (
                 <>
                   <a href="/api/customer_portal" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '700' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                       <circle cx="12" cy="12" r="3"></circle>
                     </svg>
                     <span className="hide-on-mobile">Subskrypcja</span>
@@ -563,7 +572,7 @@ export default async function Home({ searchParams }) {
           </div>
         </header>
 
-        {/* SYSTEM ZAKŁADEK (TABS) - WERSJA DESKTOP */}
+        {/* NAWIGACJA DESKTOP */}
         <div className="desktop-tabs">
           <Link 
             href={`/?tab=radar&days=${days}&provider=${selectedProvider}`} 
@@ -618,7 +627,7 @@ export default async function Home({ searchParams }) {
           </Link>
         </div>
 
-        {/* SYSTEM ZAKŁADEK (BURGER MENU) - WERSJA MOBILNA */}
+        {/* NAWIGACJA MOBILE */}
         <div className="mobile-menu-container">
           <details className="mobile-nav" style={{ width: '100%' }}>
             <summary style={{ backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold', color: '#0f172a', cursor: 'pointer' }}>
@@ -628,7 +637,7 @@ export default async function Home({ searchParams }) {
               </div>
               <span style={{ fontSize: '0.8rem', color: '#64748b' }}>▼</span>
             </summary>
-            <div style={{ position: 'absolute', top: '100%', left: '0', right: '0', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginTop: '0.5rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ position: 'absolute', top: '100%', left: '0', right: '0', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginTop: '0.5rem', overflow: 'hidden', display: 'flex', flexDirection: 'column', zIndex: 60 }}>
               <Link href={`/?tab=radar&days=${days}`} scroll={false} style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9', textDecoration: 'none', color: activeTab === 'radar' ? '#10b981' : '#334155', fontWeight: activeTab === 'radar' ? 'bold' : 'normal', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 Radar na dziś
                 <span style={{ backgroundColor: '#10b981', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>
@@ -643,10 +652,156 @@ export default async function Home({ searchParams }) {
             </div>
           </details>
         </div>
-        
-        {/* ========================================= */}
-        {/* SEKCJA 1: RADAR NA DZIŚ (Z PAYWALLEM) */}
-        {/* ========================================= */}
+
+        {/* WIDOK: HISTORIA I DORADCA */}
+        {activeTab === 'history' && (
+          <div style={{ animation: 'fadeIn 0.3s ease' }}>
+            
+            {/* WIDGET: DORADCA TARYFOWY */}
+            <div style={{ backgroundColor: '#ffffff', padding: '2.5rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem', borderTop: '6px solid #3b82f6' }}>
+              <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '2rem', marginBottom: '2.5rem' }}>
+                <div style={{ flex: '1 1 400px' }}>
+                  <h2 style={{ fontSize: '2rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    Doradca energetyczny <IconInfo />
+                  </h2>
+                  <p style={{ color: '#64748b', fontSize: '1.1rem', lineHeight: '1.6', margin: 0 }}>
+                    Porównujemy Twoje realne zużycie z taryfami stałymi największych dostawców. Sprawdź, czy Twój obecny profil zużycia lepiej pasuje do stałej umowy, czy do cen giełdowych.
+                  </p>
+                </div>
+                
+                {/* WYBÓR DOSTAWCY (Filtrujemy tylko konkretne firmy) */}
+                <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', minWidth: '300px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Twój obecny operator:</span>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                    {displayProviders.map(t => (
+                      <Link 
+                        key={t.tariff_name} 
+                        href={`/?tab=history&days=${days}&provider=${t.tariff_name}`}
+                        style={{ 
+                          padding: '8px 16px', 
+                          borderRadius: '12px', 
+                          fontSize: '0.9rem', 
+                          textDecoration: 'none',
+                          fontWeight: 'bold',
+                          transition: 'all 0.2s ease',
+                          backgroundColor: selectedProvider === t.tariff_name ? '#3b82f6' : '#ffffff',
+                          color: selectedProvider === t.tariff_name ? '#ffffff' : '#475569',
+                          border: selectedProvider === t.tariff_name ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                          boxShadow: selectedProvider === t.tariff_name ? '0 4px 6px -1px rgba(59, 130, 246, 0.2)' : 'none'
+                        }}
+                      >
+                        {t.tariff_name.replace('G11_', '')}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* STATYSTYKI PORÓWNAWCZE */}
+              {chartData.length > 0 ? (
+                <>
+                <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                  <div style={{ padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '20px', backgroundColor: '#ffffff' }}>
+                    <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Taryfa {currentTariff.tariff_name.replace('_', ' ')}</p>
+                    <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 10px 0', color: '#0f172a' }}>{stats.costG11.toFixed(2)} <span style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal' }}>zł</span></p>
+                    <div style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' }}>
+                      Stała: {currentTariff.price_per_kwh} zł/kWh
+                    </div>
+                  </div>
+                  
+                  <div style={{ padding: '2rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '20px' }}>
+                    <p style={{ color: '#047857', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Rynek Dynamiczny (Twój Koszt)</p>
+                    <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 10px 0', color: '#065f46' }}>{stats.costRCE.toFixed(2)} <span style={{ fontSize: '1.2rem', color: '#10b981', fontWeight: 'normal' }}>zł</span></p>
+                    <div style={{ display: 'inline-block', backgroundColor: '#dcfce7', color: '#047857', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' }}>
+                      Średnia: {(stats.costRCE / (stats.totalKwh || 1)).toFixed(2)} zł/kWh
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '2rem', backgroundColor: stats.savings >= 0 ? '#eff6ff' : '#fef2f2', borderRadius: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid', borderColor: stats.savings >= 0 ? '#bfdbfe' : '#fecaca' }}>
+                    <div>
+                      <p style={{ color: stats.savings >= 0 ? '#1e40af' : '#991b1b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
+                        Twój wynik optymalizacji
+                      </p>
+                      <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 15px 0', color: stats.savings >= 0 ? '#1d4ed8' : '#dc2626' }}>
+                        {stats.savings > 0 ? `+${stats.savings.toFixed(2)}` : stats.savings.toFixed(2)} <span style={{ fontSize: '1.2rem', fontWeight: 'normal' }}>zł</span>
+                      </p>
+                    </div>
+                    <div style={{ padding: '8px 12px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: stats.savings >= 0 ? 'rgba(255,255,255,0.5)' : '#fee2e2', color: stats.savings >= 0 ? '#1e40af' : '#991b1b' }}>
+                      {stats.savings >= 0 ? "🚀 Taryfa dynamiczna opłaca się bardziej!" : "⚠️ W Twoim przypadku G11 byłaby korzystniejsza."}
+                    </div>
+                  </div>
+                </div>
+
+                {/* OSTRZEŻENIE DLA PROSUMENTÓW */}
+                <div style={{ marginTop: '1.5rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '16px', padding: '1.5rem', display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: '1.5rem' }}>💡</div>
+                  <div>
+                    <strong style={{ color: '#92400e', display: 'block', marginBottom: '5px' }}>Jesteś prosumentem na starych zasadach (system opustów / net-metering)?</strong>
+                    <p style={{ margin: 0, color: '#b45309', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                      Powyższe wyliczenia zakładają zakup 100% energii z sieci. Dla starych prosumentów najkorzystniejsze jest zazwyczaj <strong>pozostanie w obecnym systemie rozliczeń</strong>. Zmiana taryfy na dynamiczną automatycznie przenosi na net-billing i powoduje utratę praw do magazynowania energii z darmowym współczynnikiem.
+                    </p>
+                  </div>
+                </div>
+                </>
+              ) : (
+                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
+                   <UploadSection />
+                </div>
+              )}
+            </div>
+
+            {/* SEKCJA GŁÓWNA HISTORII Z WYKRESEM */}
+            {chartData.length > 0 && (
+              <>
+                <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0, fontWeight: 'bold' }}>Szczegółowy profil zużycia</h2>
+                    <p style={{ color: '#64748b', margin: '5px 0 0' }}>Ostatnia synchronizacja: {stats.lastSync}</p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.3rem', backgroundColor: '#f1f5f9', padding: '0.4rem', borderRadius: '30px', border: '1px solid #e2e8f0' }}>
+                    {[3, 7, 30].map(d => (
+                      <Link 
+                        key={d} 
+                        href={`/?tab=history&days=${d}&provider=${selectedProvider}`} 
+                        scroll={false} 
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: days === d ? '#ffffff' : 'transparent',
+                          color: days === d ? '#0f172a' : '#64748b',
+                          borderRadius: '20px',
+                          textDecoration: 'none',
+                          fontWeight: '700',
+                          fontSize: '0.9rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: days === d ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+                        }}
+                      >
+                        {d} Dni
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem' }}>
+                  <Chart data={chartData} g11Rate={currentTariff.price_per_kwh} />
+                </div>
+
+                {/* UKRYTY UPLOAD DANYCH (Rozwijany) */}
+                <details className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
+                  <summary style={{ fontWeight: '600', color: '#3b82f6', fontSize: '1.05rem', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>⚙️</span> Zaktualizuj dane (wgraj nowy plik CSV)
+                  </summary>
+                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0', cursor: 'default' }}>
+                    <UploadSection />
+                  </div>
+                </details>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* WIDOK: RADAR */}
         {activeTab === 'radar' && (
           <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
@@ -708,7 +863,6 @@ export default async function Home({ searchParams }) {
                   <div style={{ paddingTop: '2rem', borderTop: '1px solid #e2e8f0' }}>
                     <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
                     
-                    {/* RESPONSIVNY KONTENER WYKRESU RADARU */}
                     <div className="chart-scroll-box">
                       <div className="chart-flex-box" style={{ display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
@@ -757,154 +911,12 @@ export default async function Home({ searchParams }) {
                   <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#ef4444' }}>⚠️ Wystąpił problem z pobraniem danych</p>
                   <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{forecastError || "Ładowanie najnowszych cen giełdowych PSE..."}</p>
                 </div>
-                <a href="/?tab=radar" style={{ padding: '10px 20px', backgroundColor: '#f1f5f9', color: '#0f172a', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', border: '1px solid #cbd5e1' }}>
-                  Spróbuj ponownie 🔄
-                </a>
               </div>
             )}
           </div>
         )}
 
-        {/* ========================================= */}
-        {/* SEKCJA 2: LUSTERKO WSTECZNE & DORADCA */}
-        {/* ========================================= */}
-        {activeTab === 'history' && (
-          <div style={{ animation: 'fadeIn 0.3s ease' }}>
-            
-            {/* WIDGET: DORADCA TARYFOWY */}
-            <div style={{ backgroundColor: '#ffffff', padding: '2.5rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem', borderTop: '6px solid #3b82f6' }}>
-              <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '2rem', marginBottom: '2.5rem' }}>
-                <div style={{ flex: '1 1 400px' }}>
-                  <h2 style={{ fontSize: '2rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    Doradca energetyczny <span style={{ fontSize: '1.2rem', backgroundColor: '#e0e7ff', color: '#4338ca', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', cursor: 'help' }}>?</span>
-                  </h2>
-                  <p style={{ color: '#64748b', fontSize: '1.1rem', lineHeight: '1.6', margin: 0 }}>
-                    Porównujemy Twoje realne zużycie z taryfami stałymi największych dostawców. Sprawdź, czy Twój obecny profil zużycia lepiej pasuje do stałej umowy, czy do cen giełdowych.
-                  </p>
-                </div>
-                
-                {/* WYBÓR DOSTAWCY */}
-                <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', minWidth: '300px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Twój obecny operator:</span>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-                    {availableTariffs.filter(t => t.tariff_name.startsWith('G11')).map(t => (
-                      <Link 
-                        key={t.tariff_name} 
-                        href={`/?tab=history&days=${days}&provider=${t.tariff_name}`}
-                        style={{ 
-                          padding: '8px 16px', 
-                          borderRadius: '12px', 
-                          fontSize: '0.9rem', 
-                          textDecoration: 'none',
-                          fontWeight: 'bold',
-                          transition: 'all 0.2s ease',
-                          backgroundColor: selectedProvider === t.tariff_name ? '#3b82f6' : '#ffffff',
-                          color: selectedProvider === t.tariff_name ? '#ffffff' : '#475569',
-                          border: selectedProvider === t.tariff_name ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                          boxShadow: selectedProvider === t.tariff_name ? '0 4px 6px -1px rgba(59, 130, 246, 0.2)' : 'none'
-                        }}
-                      >
-                        {t.tariff_name.replace('G11_', '')}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* STATYSTYKI PORÓWNAWCZE */}
-              {chartData.length > 0 ? (
-                <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                  <div style={{ padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '20px', backgroundColor: '#ffffff' }}>
-                    <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Taryfa {currentTariff.tariff_name}</p>
-                    <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 10px 0', color: '#0f172a' }}>{stats.costG11.toFixed(2)} <span style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal' }}>zł</span></p>
-                    <div style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' }}>
-                      Stała: {currentTariff.price_per_kwh} zł/kWh
-                    </div>
-                  </div>
-                  
-                  <div style={{ padding: '2rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '20px' }}>
-                    <p style={{ color: '#047857', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Rynek Dynamiczny (Twój Koszt)</p>
-                    <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 10px 0', color: '#065f46' }}>{stats.costRCE.toFixed(2)} <span style={{ fontSize: '1.2rem', color: '#10b981', fontWeight: 'normal' }}>zł</span></p>
-                    <div style={{ display: 'inline-block', backgroundColor: '#dcfce7', color: '#047857', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' }}>
-                      Średnia: {(stats.costRCE / (stats.totalKwh || 1)).toFixed(2)} zł/kWh
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '2rem', backgroundColor: stats.savingsVsG11 >= 0 ? '#eff6ff' : '#fef2f2', borderRadius: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid', borderColor: stats.savingsVsG11 >= 0 ? '#bfdbfe' : '#fecaca' }}>
-                    <div>
-                      <p style={{ color: stats.savingsVsG11 >= 0 ? '#1e40af' : '#991b1b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
-                        Twój wynik optymalizacji
-                      </p>
-                      <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 15px 0', color: stats.savingsVsG11 >= 0 ? '#1d4ed8' : '#dc2626' }}>
-                        {stats.savingsVsG11 > 0 ? `+${stats.savingsVsG11.toFixed(2)}` : stats.savingsVsG11.toFixed(2)} <span style={{ fontSize: '1.2rem', fontWeight: 'normal' }}>zł</span>
-                      </p>
-                    </div>
-                    <div style={{ padding: '8px 12px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: stats.savingsVsG11 >= 0 ? 'rgba(255,255,255,0.5)' : '#fee2e2', color: stats.savingsVsG11 >= 0 ? '#1e40af' : '#991b1b' }}>
-                      {stats.savingsVsG11 >= 0 ? "🚀 Taryfa dynamiczna pozwala oszczędzić!" : "⚠️ W Twoim przypadku G11 byłaby korzystniejsza."}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
-                   <UploadSection />
-                </div>
-              )}
-            </div>
-
-            {/* SEKCJA GŁÓWNA HISTORII Z WYKRESEM */}
-            {chartData.length > 0 && (
-              <>
-                <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                  <div>
-                    <h2 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0, fontWeight: 'bold' }}>Szczegółowy profil zużycia</h2>
-                    <p style={{ color: '#64748b', margin: '5px 0 0' }}>Ostatnia synchronizacja: {stats.lastSync}</p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '0.3rem', backgroundColor: '#f1f5f9', padding: '0.4rem', borderRadius: '30px', border: '1px solid #e2e8f0' }}>
-                    {[3, 7, 30].map(d => (
-                      <Link 
-                        key={d} 
-                        href={`/?tab=history&days=${d}&provider=${selectedProvider}`} 
-                        scroll={false} 
-                        style={{
-                          padding: '8px 20px',
-                          backgroundColor: days === d ? '#ffffff' : 'transparent',
-                          color: days === d ? '#0f172a' : '#64748b',
-                          borderRadius: '20px',
-                          textDecoration: 'none',
-                          fontWeight: '700',
-                          fontSize: '0.9rem',
-                          transition: 'all 0.2s ease',
-                          boxShadow: days === d ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                        }}
-                      >
-                        {d} Dni
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem' }}>
-                  <Chart data={chartData} />
-                </div>
-
-                {/* UKRYTY UPLOAD DANYCH (Rozwijany) */}
-                <details className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
-                  <summary style={{ fontWeight: '600', color: '#3b82f6', fontSize: '1.05rem', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>⚙️</span> Zaktualizuj dane (wgraj nowy plik CSV)
-                  </summary>
-                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0', cursor: 'default' }}>
-                    <UploadSection />
-                  </div>
-                </details>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ========================================= */}
-        {/* SEKCJA 3: ZAKŁADKA API & SMART HOME (LIVE) */}
-        {/* ========================================= */}
+        {/* WIDOK: API */}
         {activeTab === 'api' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
@@ -940,7 +952,6 @@ export default async function Home({ searchParams }) {
                     Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów i automatycznie uruchamiaj pompę ciepła w najtańszych godzinach.
                   </p>
                   
-                  {/* SEKRETNY KLUCZ API */}
                   <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Twój unikalny klucz API</h4>
                     <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '10px' }}>Zabezpiecz swoje zapytania, używając nagłówka: <code>Authorization: Bearer</code></p>
@@ -949,7 +960,6 @@ export default async function Home({ searchParams }) {
                     </code>
                   </div>
 
-                  {/* KOD YAML DLA HA */}
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
                   
                   <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
@@ -975,7 +985,6 @@ rest:
         value_template: "{{ value_json.avg_price_pln }}"
         unit_of_measurement: "PLN/kWh"
       
-      # Użyj tego sensora w panelu Energia (Energy Dashboard) do śledzenia kosztów
       - name: "Current Energy Price"
         value_template: "{{ value_json.current_price_pln }}"
         unit_of_measurement: "PLN/kWh"
@@ -983,7 +992,6 @@ rest:
                   </pre>
                 </div>
                 
-                {/* WIZUALIZACJA ODPOWIEDZI JSON */}
                 <div className="chart-scroll-box" style={{ flex: '1 1 350px', minWidth: 0, maxWidth: '100%', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
@@ -997,9 +1005,9 @@ rest:
                     {"{"}<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"status"</span>: <span style={{ color: '#a3e635' }}>"success"</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump_or_ev"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowEnd : '14:00'}"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(4) : '-0.0500'}</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"11:00"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"14:00"</span>,<br/>
+                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>-0.0500</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"current_price_pln"</span>: <span style={{ color: '#f87171' }}>0.2500</span>,<br/>
                     &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"trigger_automation"</span>: <span style={{ color: '#fbbf24' }}>true</span><br/>
                     {"}"}
