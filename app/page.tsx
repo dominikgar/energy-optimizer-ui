@@ -144,12 +144,30 @@ export default async function Home({ searchParams }) {
     try {
       const polandTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
       const todayStr = `${polandTime.getFullYear()}-${String(polandTime.getMonth() + 1).padStart(2, '0')}-${String(polandTime.getDate()).padStart(2, '0')}`;
-      const params = new URLSearchParams({ "$filter": `business_date eq '${todayStr}'` });
-      const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
-      if (pseRes.ok) {
-        const json = await pseRes.json();
-        if (json.value?.length > 0) {
-          // KROK 1: Bezpieczne parsowanie godzin (odporne na zmiany nazw kolumn w PSE)
+      
+      // --- ZMIANA: Sprawdzamy czy są już dostępne ceny na JUTRO ---
+      const tomorrowTime = new Date(polandTime);
+      tomorrowTime.setDate(tomorrowTime.getDate() + 1);
+      const tomorrowStr = `${tomorrowTime.getFullYear()}-${String(tomorrowTime.getMonth() + 1).padStart(2, '0')}-${String(tomorrowTime.getDate()).padStart(2, '0')}`;
+
+      let targetDateStr = tomorrowStr;
+      let dateLabel = "Jutro";
+
+      let params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
+      let pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
+      let json = pseRes.ok ? await pseRes.json() : { value: [] };
+
+      if (!json.value || json.value.length === 0) {
+        // Brak danych na jutro, pobieramy dzisiejsze
+        targetDateStr = todayStr;
+        dateLabel = "Dzisiaj";
+        params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
+        pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
+        json = pseRes.ok ? await pseRes.json() : { value: [] };
+      }
+
+      if (json.value?.length > 0) {
+        // KROK 1: Bezpieczne parsowanie godzin (odporne na zmiany nazw kolumn w PSE)
           let pArr = json.value.map(r => {
             let hour = '??:??';
             const timeStr = String(r.dtime || r.udtczas || r.udtczas_oreb || r.data_czas || '');
@@ -194,7 +212,7 @@ export default async function Home({ searchParams }) {
               if (endHour >= 24) endHour = 0;
               bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
             }
-            
+
             // Logika dla najdroższego okna
             if (avg > worstWindowAvgPrice) {
               worstWindowAvgPrice = avg;
@@ -207,16 +225,16 @@ export default async function Home({ searchParams }) {
             }
           }
 
-          todayForecast = { 
-            prices: pArr, 
-            date: todayStr, 
-            absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), 
-            absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), 
-            bestWindowStart, bestWindowEnd, bestWindowAvgPrice, 
-            worstWindowStart, worstWindowEnd, worstWindowAvgPrice 
-          };
-        } else forecastError = "PSE jeszcze nie opublikowało cen na dziś.";
-      }
+        todayForecast = { 
+          prices: pArr, 
+          date: targetDateStr, 
+          dateLabel: dateLabel,
+          absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), 
+          absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), 
+          bestWindowStart, bestWindowEnd, bestWindowAvgPrice, 
+          worstWindowStart, worstWindowEnd, worstWindowAvgPrice 
+        };
+      } else forecastError = "PSE jeszcze nie opublikowało cen na dziś/jutro.";
     } catch (e) { forecastError = "Błąd połączenia z PSE."; }
   }
 
