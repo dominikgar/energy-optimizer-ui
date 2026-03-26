@@ -22,9 +22,10 @@ interface TabAdvisorProps {
 export default function TabAdvisor({ days, selectedProvider, displayProviders, chartData, stats }: TabAdvisorProps) {
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <h2 className="text-3xl font-black mb-8">Porównanie Taryf (G11 vs RCE)</h2>
-      
-      {/* ZMIANA: Dodano selektor zakresu dni */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-2">
+        <h2 className="text-3xl font-black">Porównanie Taryf (G11 vs RCE)</h2>
+        
+        {/* Selektor zakresu dni */}
         <div className="flex bg-slate-200/50 p-1 rounded-xl">
           {[3, 7, 30].map(d => (
             <Link 
@@ -38,8 +39,7 @@ export default function TabAdvisor({ days, selectedProvider, displayProviders, c
           ))}
         </div>
       </div>
-
-
+      
       <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/40 mb-8">
         <div className="mb-6">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">Zmień operatora odniesienia:</span>
