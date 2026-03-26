@@ -1,85 +1,164 @@
-import { Pool } from 'pg';
 import { NextResponse } from 'next/server';
+import { Pool } from 'pg';
 import { auth } from '@clerk/nextjs/server';
+
+export const dynamic = 'force-dynamic';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-export async function POST(request) {
+export async function POST(req) {
   try {
+    // 1. Autoryzacja
     const { userId } = auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Musisz być zalogowany.' }, { status: 401 });
+      return NextResponse.json({ error: "Brak autoryzacji" }, { status: 401 });
     }
 
-    const formData = await request.formData();
+    // 2. Pobieranie pliku z żądania
+    const formData = await req.formData();
     const file = formData.get('file');
-    
-    if (!file) return NextResponse.json({ error: 'Nie znaleziono pliku.' }, { status: 400 });
+
+    if (!file) {
+      return NextResponse.json({ error: "Nie znaleziono pliku." }, { status: 400 });
+    }
 
     const text = await file.text();
-    const lines = text.split('\n');
-    const headers = lines[0].split(';').map(h => h.trim().replace(/^"|"$/g, ''));
-    
-    // Szukamy indeksów OBU kolumn: Daty i Godziny
-    const dateIdx = headers.findIndex(h => h.toLowerCase().includes('data'));
-    const timeIdx = headers.findIndex(h => h.toLowerCase().includes('godz')); 
-    const kwhIdx = headers.findIndex(h => h.toLowerCase().includes('wartość') || h.toLowerCase().includes('kwh'));
-    const typeIdx = headers.findIndex(h => h.toLowerCase().includes('rodzaj'));
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
 
-    if (dateIdx === -1 || kwhIdx === -1) {
-      return NextResponse.json({ error: 'Plik ma zły format.' }, { status: 400 });
+    if (lines.length === 0) {
+      return NextResponse.json({ error: "Plik jest pusty." }, { status: 400 });
     }
 
-    let inserted = 0;
-    
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      
-      const cols = line.split(';');
-      const dateStr = cols[dateIdx]?.trim().replace(/^"|"$/g, '');
-      if (!dateStr || dateStr.toLowerCase() === 'nan') continue;
+    // 3. Zgadywanie separatora (szukamy czy jest więcej średników czy przecinków)
+    const firstFewLines = lines.slice(0, 5).join('\n');
+    const separator = (firstFewLines.match(/;/g) || []).length > (firstFewLines.match(/,/g) || []).length ? ';' : ',';
 
-      // Magia z godziną - łączymy w całość
-      let timeStr = timeIdx !== -1 ? cols[timeIdx]?.trim().replace(/^"|"$/g, '') : '';
-      
-      // Tauron czasem ma kaprys wpisać "24:00", co psuje serwery. Zamieniamy to na równe 00:00.
-      if (timeStr.startsWith('24:')) {
-        timeStr = '00:00:00';
-      }
-      
-      const dateTimeString = timeStr ? `${dateStr} ${timeStr}` : dateStr;
-      
-      const kwhStr = cols[kwhIdx]?.trim().replace(/^"|"$/g, '').replace(',', '.');
-      const kwh = parseFloat(kwhStr);
-      if (isNaN(kwh)) continue;
-      
-      const type = typeIdx !== -1 ? cols[typeIdx]?.trim().replace(/^"|"$/g, '') : 'pobór';
-      
-      // Bezpieczne konwertowanie na znacznik czasu
-      let timestamp;
-      try {
-        timestamp = new Date(dateTimeString).toISOString();
-      } catch (e) {
-        continue; // Ignorujemy śmieciowe dane w pliku
-      }
+    // 4. Analiza nagłówków (heurystyka)
+    let headerIdx = -1;
+    let dateCol = -1;
+    let hourCol = -1;
+    let valCol = -1;
 
-      await pool.query(`
-        INSERT INTO energy_consumption (timestamp, value_kwh, type, user_id)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (timestamp, user_id) DO UPDATE SET value_kwh = EXCLUDED.value_kwh;
-      `, [timestamp, kwh, type, userId]);
+    // Przeszukujemy pierwsze 20 linii w poszukiwaniu nagłówka
+    for (let i = 0; i < Math.min(20, lines.length); i++) {
+      const cols = lines[i].split(separator).map(c => c.toLowerCase().replace(/["']/g, '').trim());
       
-      inserted++;
+      const dIdx = cols.findIndex(c => c.includes('data') || c.includes('czas') || c === 'od');
+      const hIdx = cols.findIndex(c => c === 'godzina' || c.includes('godz'));
+      const vIdx = cols.findIndex(c => c.includes('zużycie') || c.includes('zuzycie') || c.includes('wartość') || c.includes('wartosc') || c.includes('kwh') || c.includes('pobór') || c.includes('pobor') || c.includes('ilość'));
+
+      if (dIdx !== -1 && vIdx !== -1) {
+        headerIdx = i;
+        dateCol = dIdx;
+        hourCol = hIdx;
+        valCol = vIdx;
+        break;
+      }
     }
 
-    return NextResponse.json({ success: true, message: `Sukces! Poprawnie zaimportowano ${inserted} kwadransów/godzin.` });
+    if (headerIdx === -1) {
+      return NextResponse.json({ 
+        error: "Nie rozpoznano struktury pliku. Upewnij się, że zawiera kolumny z datą i zużyciem (kWh)." 
+      }, { status: 400 });
+    }
+
+    // 5. Parsowanie wierszy
+    const parsedData = [];
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      const cols = lines[i].split(separator).map(c => c.replace(/["']/g, '').trim());
+      if (cols.length <= valCol) continue; // Pusty lub uszkodzony wiersz
+
+      let dateStr = cols[dateCol];
+      let hourStr = hourCol !== -1 ? cols[hourCol] : null;
+      let valStr = cols[valCol].replace(',', '.'); // Polska konwencja: zamiana przecinka na kropkę dziesiętną
+
+      if (!dateStr || !valStr || isNaN(parseFloat(valStr))) continue;
+
+      // a) Wyciąganie daty (YYYY-MM-DD lub DD.MM.YYYY)
+      let datePart = '';
+      let dMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (dMatch) {
+        datePart = `${dMatch[1]}-${dMatch[2]}-${dMatch[3]}`;
+      } else {
+        dMatch = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+        if (dMatch) {
+          datePart = `${dMatch[3]}-${dMatch[2]}-${dMatch[1]}`;
+        }
+      }
+      
+      if (!datePart) continue;
+
+      // b) Wyciąganie czasu
+      let timePart = '00:00:00';
+      // Często czas jest zintegrowany z datą w jednej kolumnie
+      let tMatch = dateStr.match(/(\d{2}):(\d{2})/);
+      
+      if (tMatch) {
+        timePart = `${tMatch[1]}:${tMatch[2]}:00`;
+      } else if (hourStr) {
+        // Czas jest w osobnej kolumnie
+        tMatch = hourStr.match(/(\d{1,2}):(\d{2})/);
+        if (tMatch) {
+          timePart = `${tMatch[1].padStart(2, '0')}:${tMatch[2]}:00`;
+        } else if (!isNaN(parseInt(hourStr))) {
+          // Niektórzy operatorzy podają samą godzinę (1-24)
+          let h = parseInt(hourStr);
+          if (h === 24) h = 0; 
+          timePart = `${String(h).padStart(2, '0')}:00:00`;
+        }
+      }
+
+      parsedData.push({
+        user_id: userId,
+        timestamp: `${datePart} ${timePart}`,
+        value_kwh: parseFloat(valStr),
+        type: 'Pobór'
+      });
+    }
+
+    if (parsedData.length === 0) {
+      return NextResponse.json({ error: "Nie znaleziono poprawnych danych (wartości liczbowych) w pliku." }, { status: 400 });
+    }
+
+    // 6. Bezpieczny zapis do Bazy Danych (z podziałem na mniejsze paczki/chunks)
+    const chunkSize = 2000; 
+
+    // Otwieramy transakcję
+    await pool.query('BEGIN');
+    try {
+      // Usuwamy stare dane użytkownika, aby nowy raport był aktualny
+      await pool.query('DELETE FROM energy_consumption WHERE user_id = $1', [userId]);
+
+      // Wrzucamy dane partiami, by nie przekroczyć limitu parametrów PostgreSQL
+      for (let i = 0; i < parsedData.length; i += chunkSize) {
+        const chunk = parsedData.slice(i, i + chunkSize);
+        
+        let query = 'INSERT INTO energy_consumption (user_id, timestamp, value_kwh, type) VALUES ';
+        let values = [];
+        let paramsCount = 1;
+
+        for (const row of chunk) {
+          query += `($${paramsCount++}, $${paramsCount++}, $${paramsCount++}, $${paramsCount++}),`;
+          values.push(row.user_id, row.timestamp, row.value_kwh, row.type);
+        }
+        
+        query = query.slice(0, -1); // Usuwamy ostatni przecinek
+        await pool.query(query, values);
+      }
+
+      await pool.query('COMMIT'); // Zatwierdzamy transakcję
+      return NextResponse.json({ success: true, count: parsedData.length });
+
+    } catch (dbError) {
+      await pool.query('ROLLBACK'); // W razie błędu wycofujemy wszystko
+      throw dbError;
+    }
 
   } catch (error) {
-    console.error("Błąd serwera:", error);
-    return NextResponse.json({ error: 'Błąd przetwarzania pliku.' }, { status: 500 });
+    console.error('Upload Error:', error);
+    return NextResponse.json({ error: "Błąd podczas przetwarzania pliku: " + error.message }, { status: 500 });
   }
 }
