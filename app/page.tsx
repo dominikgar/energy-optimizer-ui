@@ -85,9 +85,16 @@ export default async function Home({ searchParams }) {
   // 2. Pobieranie Historii Zużycia i Przeliczanie dla Doradcy
   let chartData = [];
   let stats = { totalKwh: 0, costRCE: 0, costG11: 0, worstHour: 0, worstHourCost: 0, bestHour: 0, bestHourPrice: 999 };
+  let dataRange = { min: null, max: null };
 
   if (activeTab === 'history' || activeTab === 'advisor') {
     try {
+      const rangeRes = await pool.query('SELECT MIN(timestamp) as min_ts, MAX(timestamp) as max_ts FROM energy_consumption WHERE user_id = $1', [userId]);
+      if (rangeRes.rows.length > 0 && rangeRes.rows[0].min_ts) {
+        dataRange.min = new Date(rangeRes.rows[0].min_ts).toLocaleDateString('pl-PL');
+        dataRange.max = new Date(rangeRes.rows[0].max_ts).toLocaleDateString('pl-PL');
+      }
+
       const { rows } = await pool.query(`
         WITH hourly_prices AS (
             SELECT DATE_TRUNC('hour', timestamp) AS hour_ts, AVG(price_pln_mwh) AS price_mwh
@@ -203,7 +210,7 @@ export default async function Home({ searchParams }) {
             <TabRadar isPremiumUser={isPremiumUser} todayForecast={todayForecast} forecastError={forecastError} />
           )}
           {activeTab === 'history' && (
-            <TabHistory days={days} chartData={chartData} />
+            <TabHistory days={days} chartData={chartData} dataRange={dataRange} />
           )}
           {activeTab === 'advisor' && (
             <TabAdvisor days={days} selectedProvider={selectedProvider} displayProviders={displayProviders} chartData={chartData} stats={stats} />
