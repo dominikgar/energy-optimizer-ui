@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import Chart from '../app/Chart';
-import UploadSection from '../app/UploadSection';
+// ZMIANA: Poprawione ścieżki wyjścia o jeden folder wyżej
+import Chart from '../Chart';
+import UploadSection from '../UploadSection';
 
 interface TabHistoryProps {
   days: number;
