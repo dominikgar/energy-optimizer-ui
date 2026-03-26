@@ -21,37 +21,55 @@ export default function TabApi({ userApiKey, todayForecast }: TabApiProps) {
             </div>
 
             <h3 className="text-xl font-bold mb-4">Konfiguracja Home Assistant</h3>
-            <p className="text-slate-500 text-sm mb-4">Wklej ten kod do pliku <code>configuration.yaml</code>, aby utworzyć sensory sterujące pompą ciepła oraz encję cenową dla panelu Energia.</p>
-            <pre className="bg-slate-900 text-emerald-400 p-6 rounded-2xl text-sm font-mono overflow-x-auto shadow-inner">
+            <p className="text-slate-500 text-sm mb-4">Wklej ten kod do pliku <code>configuration.yaml</code>, aby utworzyć pełen zestaw sensorów predykcyjnych dla pompy ciepła.</p>
+            <pre className="bg-slate-900 text-emerald-400 p-6 rounded-2xl text-sm font-mono overflow-x-auto shadow-inner leading-relaxed">
 {`rest:
   - resource: "https://twoja-domena.pl/api/v1/forecast/best-window"
     headers:
       Authorization: "Bearer ${userApiKey || 'TWÓJ_KLUCZ'}"
+    scan_interval: 3600 # Odświeżaj co godzinę
     sensor:
-      - name: "Energy Start"
-        value_template: "{{ value_json.recommended_start }}"
-      - name: "Energy End"
-        value_template: "{{ value_json.recommended_end }}"
-      - name: "Energy Trigger Automation"
-        value_template: "{{ value_json.trigger_automation }}"
-      - name: "Current Energy Price"
+      - name: "Energy Price Current"
         value_template: "{{ value_json.current_price_pln }}"
+        unit_of_measurement: "PLN/kWh"
+      - name: "Energy Start Today"
+        value_template: "{{ value_json.recommended_start }}"
+      - name: "Energy End Today"
+        value_template: "{{ value_json.recommended_end }}"
+      - name: "Energy Avg Price Today"
+        value_template: "{{ value_json.avg_price_pln }}"
+        unit_of_measurement: "PLN/kWh"
+        
+      # Estymacje na JUTRO (umożliwiają głębszą optymalizację)
+      - name: "Energy Start Tomorrow"
+        value_template: "{{ value_json.tomorrow_recommended_start }}"
+      - name: "Energy End Tomorrow"
+        value_template: "{{ value_json.tomorrow_recommended_end }}"
+      - name: "Energy Avg Price Tomorrow"
+        value_template: "{{ value_json.tomorrow_avg_price_pln }}"
         unit_of_measurement: "PLN/kWh"`}
             </pre>
           </div>
 
           <div className="bg-slate-900 text-slate-300 p-8 rounded-[32px] flex flex-col font-mono text-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full filter blur-3xl opacity-20"></div>
-            <div className="text-slate-500 mb-4">// Podgląd odpowiedzi API na żywo (GET)</div>
+            <div className="text-slate-500 mb-4">// Podgląd struktury odpowiedzi API (GET)</div>
             <pre className="text-emerald-300 flex-1 overflow-auto">
 {JSON.stringify({
   status: "success",
+  data_source: "PSE",
   device_type: "heat_pump_or_ev",
+  date: "2026-03-26",
   recommended_start: todayForecast?.bestWindowStart || "11:00",
   recommended_end: todayForecast?.bestWindowEnd || "14:00",
   avg_price_pln: 0.1245,
   current_price_pln: 0.1500,
-  trigger_automation: true
+  trigger_automation: true,
+  tomorrow_data_available: true,
+  tomorrow_date: "2026-03-27",
+  tomorrow_recommended_start: "13:00",
+  tomorrow_recommended_end: "16:00",
+  tomorrow_avg_price_pln: 0.0512
 }, null, 2)}
             </pre>
           </div>
