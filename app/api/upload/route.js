@@ -42,7 +42,6 @@ export async function POST(req) {
     let hourCol = -1;
     let valCol = -1;
 
-    // Przeszukujemy pierwsze 20 linii w poszukiwaniu nagłówka
     for (let i = 0; i < Math.min(20, lines.length); i++) {
       const cols = lines[i].split(separator).map(c => c.toLowerCase().replace(/["']/g, '').trim());
       
@@ -65,20 +64,20 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // 5. Parsowanie wierszy i USUWANIE DUPLIKATÓW (np. z powodu zmiany czasu na zimowy)
+    // 5. Parsowanie wierszy i ZAAWANSOWANE USUWANIE DUPLIKATÓW
     const parsedDataMap = new Map();
     
     for (let i = headerIdx + 1; i < lines.length; i++) {
       const cols = lines[i].split(separator).map(c => c.replace(/["']/g, '').trim());
-      if (cols.length <= valCol) continue; // Pusty lub uszkodzony wiersz
+      if (cols.length <= valCol) continue; 
 
       let dateStr = cols[dateCol];
       let hourStr = hourCol !== -1 ? cols[hourCol] : null;
-      let valStr = cols[valCol].replace(',', '.'); // Polska konwencja: zamiana przecinka na kropkę dziesiętną
+      let valStr = cols[valCol].replace(',', '.'); 
 
       if (!dateStr || !valStr || isNaN(parseFloat(valStr))) continue;
 
-      // a) Wyciąganie daty (YYYY-MM-DD lub DD.MM.YYYY)
+      // a) Wyciąganie daty
       let datePart = '';
       let dMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
       if (dMatch) {
@@ -92,30 +91,38 @@ export async function POST(req) {
       
       if (!datePart) continue;
 
-      // b) Wyciąganie czasu
-      let timePart = '00:00:00';
-      // Często czas jest zintegrowany z datą w jednej kolumnie
+      // b) Wyciąganie czasu i normalizacja matematyczna
+      let h = 0, m = 0;
       let tMatch = dateStr.match(/(\d{2}):(\d{2})/);
       
       if (tMatch) {
-        timePart = `${tMatch[1]}:${tMatch[2]}:00`;
+        h = parseInt(tMatch[1], 10);
+        m = parseInt(tMatch[2], 10);
       } else if (hourStr) {
-        // Czas jest w osobnej kolumnie
         tMatch = hourStr.match(/(\d{1,2}):(\d{2})/);
         if (tMatch) {
-          timePart = `${tMatch[1].padStart(2, '0')}:${tMatch[2]}:00`;
+          h = parseInt(tMatch[1], 10);
+          m = parseInt(tMatch[2], 10);
         } else if (!isNaN(parseInt(hourStr))) {
-          // Niektórzy operatorzy podają samą godzinę (1-24)
-          let h = parseInt(hourStr);
-          if (h === 24) h = 0; 
-          timePart = `${String(h).padStart(2, '0')}:00:00`;
+          // Format Tauron: 1 do 24.
+          let parsedH = parseInt(hourStr, 10);
+          h = parsedH - 1; // Przesunięcie 1 -> 00:00
+          if (h < 0) h = 0;
         }
       }
 
-      const timestampKey = `${datePart} ${timePart}`;
+      // KRYTYCZNA POPRAWKA: Przerzucamy godziny z błędów formatowania (h >= 24) 
+      // na fizycznie kolejny dzień w strefie UTC. Wtedy JS tworzy poprawne klucze, a Postgres nie wariuje.
+      let dateObj = new Date(`${datePart}T00:00:00Z`);
+      if (h >= 24) {
+        dateObj.setUTCDate(dateObj.getUTCDate() + Math.floor(h / 24));
+        h = h % 24;
+      }
+      
+      const isoDate = dateObj.toISOString().split('T')[0];
+      const timePart = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+      const timestampKey = `${isoDate} ${timePart}`;
 
-      // Zapisujemy do mapy. Jeśli wystąpi zduplikowana godzina (np. podczas zmiany czasu),
-      // po prostu zaktualizuje ona poprzednią wartość, zapobiegając błędowi SQL.
       parsedDataMap.set(timestampKey, {
         user_id: userId,
         timestamp: timestampKey,
@@ -124,23 +131,19 @@ export async function POST(req) {
       });
     }
 
-    // Przekształcamy mapę z powrotem na tablicę do wysłania do bazy
     const parsedData = Array.from(parsedDataMap.values());
 
     if (parsedData.length === 0) {
-      return NextResponse.json({ error: "Nie znaleziono poprawnych danych (wartości liczbowych) w pliku." }, { status: 400 });
+      return NextResponse.json({ error: "Nie znaleziono poprawnych danych w pliku." }, { status: 400 });
     }
 
-    // 6. Bezpieczny zapis do Bazy Danych (z podziałem na mniejsze paczki/chunks)
+    // 6. Bezpieczny zapis do Bazy Danych
     const chunkSize = 2000; 
 
-    // Otwieramy transakcję
     await pool.query('BEGIN');
     try {
-      // Usuwamy stare dane użytkownika, aby nowy raport był aktualny
       await pool.query('DELETE FROM energy_consumption WHERE user_id = $1', [userId]);
 
-      // Wrzucamy dane partiami, by nie przekroczyć limitu parametrów PostgreSQL
       for (let i = 0; i < parsedData.length; i += chunkSize) {
         const chunk = parsedData.slice(i, i + chunkSize);
         
@@ -153,19 +156,17 @@ export async function POST(req) {
           values.push(row.user_id, row.timestamp, row.value_kwh, row.type);
         }
         
-        query = query.slice(0, -1); // Usuwamy ostatni przecinek
-        
-        // ZMIANA: Dodana obsługa konfliktów (np. zmiana czasu letni/zimowy, zduplikowane wiersze od operatora)
+        query = query.slice(0, -1); 
         query += ' ON CONFLICT (user_id, timestamp) DO UPDATE SET value_kwh = EXCLUDED.value_kwh';
         
         await pool.query(query, values);
       }
 
-      await pool.query('COMMIT'); // Zatwierdzamy transakcję
+      await pool.query('COMMIT'); 
       return NextResponse.json({ success: true, count: parsedData.length });
 
     } catch (dbError) {
-      await pool.query('ROLLBACK'); // W razie błędu wycofujemy wszystko
+      await pool.query('ROLLBACK'); 
       throw dbError;
     }
 
