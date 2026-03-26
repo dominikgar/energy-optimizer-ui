@@ -1,32 +1,15 @@
-// @ts-nocheck
-"use client";
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+'use client';
+
+import React, { useState } from 'react';
 
 export default function UploadSection() {
-  const [status, setStatus] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [isHelpOpen, setIsHelpOpen] = useState(false); // Sterowanie rozwinięciem instrukcji
-  const fileInputRef = useRef(null);
-  
-  const router = useRouter(); 
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsLoading(true);
-    setStatus('Wysyłanie pliku na serwer...');
-    setProgress(15);
-    setIsHelpOpen(false); // Zwijamy instrukcję, gdy ktoś zaczyna wgrywać
-
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 85) return prev;
-        return prev + 10;
-      });
-    }, 400);
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    setError(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -36,99 +19,112 @@ export default function UploadSection() {
         method: 'POST',
         body: formData,
       });
-      
-      const data = await response.json();
-      clearInterval(progressInterval);
-      
-      if (response.ok) {
-        setProgress(100);
-        setStatus(`✅ ${data.message} Odświeżam wykresy...`);
-        
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        
-        setTimeout(() => {
-          router.refresh(); 
-          setIsLoading(false);
-          setTimeout(() => { setStatus(''); setProgress(0); }, 3000); 
-        }, 1000);
-        
-      } else {
-        setStatus(`❌ Błąd: ${data.error}`);
-        setIsLoading(false);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Błąd podczas wgrywania pliku.');
       }
-    } catch (err) {
-      clearInterval(progressInterval);
-      setStatus(`❌ Błąd krytyczny: Nie udało się połączyć z serwerem.`);
-      setIsLoading(false);
-    } 
+
+      // Po sukcesie przekierowujemy użytkownika do zakładki historia
+      // Używamy window.location, aby uniknąć problemów z dependencjami routera w niektórych środowiskach
+      window.location.href = '/?tab=history';
+    } catch (err: any) {
+      setError(err.message);
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      handleUpload(e.target.files[0]);
+    }
   };
 
   return (
-    <div style={{ backgroundColor: '#141414', padding: '2rem', borderRadius: '24px', border: '1px dashed #333', marginBottom: '2.5rem', textAlign: 'center', position: 'relative' }}>
-      <h3 style={{ margin: '0 0 0.5rem 0', color: '#ddd', fontSize: '1.2rem' }}>Wgraj swój plik z Taurona (CSV)</h3>
-      
-      {/* Przycisk pokazujący instrukcję */}
-      <button 
-        onClick={() => setIsHelpOpen(!isHelpOpen)} 
-        style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.9rem', cursor: 'pointer', marginBottom: '1.5rem', transition: 'color 0.2s' }}
-        onMouseOver={(e) => e.target.style.color = '#60a5fa'}
-        onMouseOut={(e) => e.target.style.color = '#3b82f6'}
-      >
-        {isHelpOpen ? 'Ukryj instrukcję ▲' : 'Nie wiesz jak pobrać plik? Zobacz instrukcję ▼'}
-      </button>
+    <div 
+      className={`relative border-2 border-dashed rounded-[32px] p-10 text-center transition-all duration-300 ${
+        dragActive ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-slate-200 bg-slate-50 hover:bg-white'
+      }`}
+      onDragEnter={handleDrag}
+      onDragLeave={handleDrag}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
+    >
+      {/* Ukryty input do wyboru pliku */}
+      <input
+        type="file"
+        id="file-upload"
+        className="hidden"
+        accept=".csv"
+        onChange={handleChange}
+        disabled={isUploading}
+      />
 
-      {/* Rozwijana instrukcja */}
-      {isHelpOpen && (
-        <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '12px', border: '1px solid #222', marginBottom: '2rem', textAlign: 'left', fontSize: '0.95rem', color: '#aaa', lineHeight: '1.6', maxWidth: '600px', margin: '0 auto 2rem auto' }}>
-          <strong style={{ color: '#fff', fontSize: '1.05rem' }}>Jak pobrać dane z eLicznik Tauron?</strong>
-          <ol style={{ paddingLeft: '1.2rem', marginTop: '0.8rem', marginBottom: 0 }}>
-            <li style={{ marginBottom: '0.5rem' }}>Zaloguj się na swoje konto na stronie <strong>Mój Tauron / eLicznik</strong>.</li>
-            <li style={{ marginBottom: '0.5rem' }}>Przejdź do zakładki z wykresami zużycia energii.</li>
-            <li style={{ marginBottom: '0.5rem' }}>Wybierz zakres dat. Najlepiej wybrać <strong>Ostatnie 30 dni</strong> (system giełdowy RCE-PLN działa od czerwca 2024 r., więc nie wgrywaj starszych danych).</li>
-            <li style={{ marginBottom: '0.5rem' }}>Wybierz rozdzielczość: <strong>Godzinowa</strong> lub <strong>15-minutowa</strong>.</li>
-            <li>Kliknij przycisk <strong>Eksportuj do pliku</strong> (lub ikonę pobierania) i wybierz format <strong>CSV</strong>. Następnie wgraj ten plik poniżej.</li>
-          </ol>
+      <div className="flex flex-col items-center">
+        <div className={`text-5xl mb-4 transition-transform ${isUploading ? 'animate-bounce' : 'group-hover:scale-110'}`}>
+          {isUploading ? '🚀' : '📊'}
         </div>
-      )}
-      
-      <div style={{ display: 'block' }}>
-        <input 
-          type="file" 
-          accept=".csv" 
-          onChange={handleFileChange} 
-          style={{ display: 'none' }} 
-          id="file-upload"
-          ref={fileInputRef}
-          disabled={isLoading}
-        />
         
-        <label htmlFor="file-upload" style={{ 
-          display: 'inline-block',
-          padding: '12px 30px', 
-          backgroundColor: isLoading ? '#222' : '#10b981', 
-          color: isLoading ? '#888' : '#fff', 
-          borderRadius: '30px', 
-          cursor: isLoading ? 'wait' : 'pointer',
-          fontWeight: 'bold',
-          fontSize: '1rem',
-          transition: 'all 0.3s',
-          border: isLoading ? '1px solid #444' : '1px solid #10b981'
-        }}>
-          {isLoading ? 'Przetwarzanie danych...' : 'Wybierz plik CSV z dysku'}
-        </label>
-      </div>
-
-      {isLoading && (
-        <div style={{ width: '100%', maxWidth: '400px', height: '6px', backgroundColor: '#222', borderRadius: '3px', margin: '1.5rem auto 0', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progress}%`, backgroundColor: '#3b82f6', transition: 'width 0.4s ease-out', boxShadow: '0 0 10px #3b82f6' }} />
-        </div>
-      )}
-
-      {status && (
-        <p style={{ marginTop: '1rem', fontSize: '0.95rem', fontWeight: '500', color: status.includes('❌') ? '#ef4444' : (progress === 100 ? '#10b981' : '#3b82f6') }}>
-          {status}
+        <h3 className="text-xl font-bold text-slate-900 mb-2">
+          {isUploading ? 'Przetwarzanie danych...' : 'Wgraj dane od swojego operatora'}
+        </h3>
+        
+        <p className="text-slate-500 mb-6 max-w-sm mx-auto leading-relaxed">
+          Zoptymalizuj rachunki o <strong>15-20%</strong>. Obsługujemy pliki .csv z <strong>Tauron eLicznik, PGE, Enea oraz Energa</strong>.
         </p>
-      )}
+
+        {/* Branding Operatorów */}
+        <div className="flex flex-wrap justify-center gap-3 mb-8 opacity-40 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-500">
+           <span className="text-[9px] font-black tracking-tighter border border-slate-300 px-2 py-1 rounded-md bg-white">TAURON</span>
+           <span className="text-[9px] font-black tracking-tighter border border-slate-300 px-2 py-1 rounded-md bg-white">PGE eBOK</span>
+           <span className="text-[9px] font-black tracking-tighter border border-slate-300 px-2 py-1 rounded-md bg-white">ENEA</span>
+           <span className="text-[9px] font-black tracking-tighter border border-slate-300 px-2 py-1 rounded-md bg-white">ENERGA</span>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl animate-in fade-in zoom-in duration-300">
+            <strong>Błąd:</strong> {error}
+          </div>
+        )}
+
+        <label 
+          htmlFor="file-upload"
+          className={`px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 transition-all cursor-pointer ${
+            isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 hover:scale-105 active:scale-95'
+          }`}
+        >
+          {isUploading ? 'Wgrywanie...' : 'Wybierz plik CSV'}
+        </label>
+        
+        {!isUploading && (
+          <p className="mt-4 text-xs text-slate-400">
+            Lub przeciągnij i upuść plik tutaj
+          </p>
+        )}
+      </div>
+      
+      {/* Overlay podczas przeciągania */}
+      {dragActive && <div className="absolute inset-0 z-10 rounded-[32px] pointer-events-none" />}
     </div>
   );
 }
