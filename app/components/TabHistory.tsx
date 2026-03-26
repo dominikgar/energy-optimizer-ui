@@ -7,13 +7,21 @@ import UploadSection from '../UploadSection';
 interface TabHistoryProps {
   days: number;
   chartData: any[];
+  dataRange?: { min: string | null; max: string | null };
 }
 
-export default function TabHistory({ days, chartData }: TabHistoryProps) {
+export default function TabHistory({ days, chartData, dataRange }: TabHistoryProps) {
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <h2 className="text-3xl font-black">Profil Zużycia</h2>
+        <div>
+          <h2 className="text-3xl font-black">Profil Zużycia</h2>
+          {dataRange?.min && (
+            <p className="text-slate-500 mt-2 text-sm font-medium">
+              Dane w bazie obejmują okres: <strong className="text-blue-600">{dataRange.min} - {dataRange.max}</strong>
+            </p>
+          )}
+        </div>
         <div className="flex bg-slate-200/50 p-1 rounded-xl">
           {[3, 7, 30].map(d => (
             <Link 
