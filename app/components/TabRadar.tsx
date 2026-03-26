@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Definiujemy strukturę danych
 interface ForecastData {
@@ -27,41 +27,48 @@ interface TabRadarProps {
 const IconZap = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 fill-emerald-500"><path d="M4 14.71 13.5 3l-1.33 8.29H20l-9.5 11.71 1.33-8.29H4z"/></svg>;
 
 export default function TabRadar({ isPremiumUser, todayForecast, tomorrowForecast, forecastError }: TabRadarProps) {
-  // Stan domyślnie pokazuje dzisiaj. Jeśli dzisiaj jest null (bardzo rzadkie), próbuje pokazać jutro.
-  const [view, setView] = useState<'today' | 'tomorrow'>(todayForecast ? 'today' : (tomorrowForecast ? 'tomorrow' : 'today'));
-  
+  // Stan kontrolujący, który dzień wyświetlamy
+  const [view, setView] = useState<'today' | 'tomorrow'>('today');
+
+  // Ustawienie domyślnego widoku w zależności od dostępnych danych
+  useEffect(() => {
+    if (todayForecast) {
+      setView('today');
+    } else if (!todayForecast && tomorrowForecast) {
+      setView('tomorrow');
+    }
+  }, [todayForecast, tomorrowForecast]);
+
   const activeForecast = view === 'today' ? todayForecast : tomorrowForecast;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
+      {/* Ujednolicony Nagłówek i Przełącznik Dni (Jak w Profilu Historycznym) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-         <h2 className="text-3xl font-black">
-           Plan oszczędności {activeForecast ? `na ${activeForecast.dateLabel?.toLowerCase()}` : ''}
-         </h2>
+        <div>
+          <h2 className="text-3xl font-black">Radar Cenowy PSE</h2>
+          {activeForecast && (
+            <p className="text-slate-500 mt-2 text-sm font-medium">
+              Dane z giełdy dla dnia: <strong className="text-blue-600">{activeForecast.dateLabel} ({activeForecast.date})</strong>
+            </p>
+          )}
+        </div>
          
-         {/* Przełącznik Dzisiaj / Jutro */}
-         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-           {activeForecast && (
-             <span className="text-slate-500 text-sm">
-               Dane PSE: <strong>{activeForecast.date}</strong>
-             </span>
-           )}
-           <div className="flex bg-slate-200/50 p-1 rounded-xl">
-             <button 
-               onClick={() => setView('today')}
-               disabled={!todayForecast}
-               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${!todayForecast ? 'opacity-50 cursor-not-allowed' : ''} ${view === 'today' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Dzisiaj
-             </button>
-             <button 
-               onClick={() => setView('tomorrow')}
-               disabled={!tomorrowForecast}
-               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${!tomorrowForecast ? 'opacity-50 cursor-not-allowed' : ''} ${view === 'tomorrow' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Jutro
-             </button>
-           </div>
+         <div className="flex bg-slate-200/50 p-1 rounded-xl">
+           <button 
+             onClick={() => setView('today')}
+             disabled={!todayForecast}
+             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${!todayForecast ? 'opacity-50 cursor-not-allowed' : ''} ${view === 'today' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+           >
+             Dzisiaj
+           </button>
+           <button 
+             onClick={() => setView('tomorrow')}
+             disabled={!tomorrowForecast}
+             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${!tomorrowForecast ? 'opacity-50 cursor-not-allowed' : ''} ${view === 'tomorrow' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+           >
+             Jutro
+           </button>
          </div>
       </div>
       
@@ -116,8 +123,8 @@ export default function TabRadar({ isPremiumUser, todayForecast, tomorrowForecas
             <p className="text-slate-400 font-bold uppercase text-sm tracking-widest mb-8">
               Wizualizacja cen w ciągu doby (PLN/kWh)
             </p>
-            <div className="w-full pb-6">
-              <div className="flex flex-col w-full">
+            <div className="w-full pb-6 overflow-x-auto">
+              <div className="flex flex-col w-full min-w-[500px] lg:min-w-0">
                 <div className="flex items-end justify-between h-[200px] border-b border-slate-200 pb-2 relative mt-4">
                   
                   {activeForecast.prices.map((item, i) => {
@@ -184,15 +191,18 @@ export default function TabRadar({ isPremiumUser, todayForecast, tomorrowForecas
                           style={{ height: `${barHeight}px`, opacity: isMinWindow || isMaxWindow ? 1 : 0.7 }}
                         ></div>
 
-                        {/* Oś godzinowa (pokazujemy rzadziej, by nie zachodziły na siebie) */}
-                        {isFullHour && parseInt(item.time.split(':')[0]) % 6 === 0 && (
-                          <span className="absolute top-[calc(100%+8px)] text-[10px] text-slate-400 font-bold">
-                            {item.time.split(':')[0]}:00
-                          </span>
-                        )}
                       </div>
                     )
                   })}
+                </div>
+                
+                {/* Oś godzinowa na dole */}
+                <div className="flex justify-between mt-3 text-slate-400 text-xs font-bold px-1">
+                   <span>00:00</span>
+                   <span>06:00</span>
+                   <span>12:00</span>
+                   <span>18:00</span>
+                   <span>23:00</span>
                 </div>
               </div>
             </div>
