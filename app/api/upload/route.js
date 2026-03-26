@@ -65,8 +65,9 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // 5. Parsowanie wierszy
-    const parsedData = [];
+    // 5. Parsowanie wierszy i USUWANIE DUPLIKATÓW (np. z powodu zmiany czasu na zimowy)
+    const parsedDataMap = new Map();
+    
     for (let i = headerIdx + 1; i < lines.length; i++) {
       const cols = lines[i].split(separator).map(c => c.replace(/["']/g, '').trim());
       if (cols.length <= valCol) continue; // Pusty lub uszkodzony wiersz
@@ -111,13 +112,20 @@ export async function POST(req) {
         }
       }
 
-      parsedData.push({
+      const timestampKey = `${datePart} ${timePart}`;
+
+      // Zapisujemy do mapy. Jeśli wystąpi zduplikowana godzina (np. podczas zmiany czasu),
+      // po prostu zaktualizuje ona poprzednią wartość, zapobiegając błędowi SQL.
+      parsedDataMap.set(timestampKey, {
         user_id: userId,
-        timestamp: `${datePart} ${timePart}`,
+        timestamp: timestampKey,
         value_kwh: parseFloat(valStr),
         type: 'Pobór'
       });
     }
+
+    // Przekształcamy mapę z powrotem na tablicę do wysłania do bazy
+    const parsedData = Array.from(parsedDataMap.values());
 
     if (parsedData.length === 0) {
       return NextResponse.json({ error: "Nie znaleziono poprawnych danych (wartości liczbowych) w pliku." }, { status: 400 });
