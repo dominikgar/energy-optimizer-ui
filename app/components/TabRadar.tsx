@@ -79,46 +79,46 @@ export default function TabRadar({ isPremiumUser, todayForecast, forecastError }
             <p className="text-slate-400 font-bold uppercase text-sm tracking-widest mb-8">
               Wizualizacja cen w ciągu doby (PLN/kWh)
             </p>
-            <div className="w-full pb-6 overflow-x-auto">
-              {/* ZMIANA: Zastąpiliśmy min-w-[700px] elastycznym w-full, aby wykres dopasowywał się do ramki */}
-              <div className="flex flex-col w-full min-w-[400px] lg:min-w-0">
+            {/* ZMIANA: Usunięto overflow-x-auto, wykres idealnie wypełni dostępną szerokość */}
+            <div className="w-full pb-6">
+              <div className="flex flex-col w-full">
                 <div className="flex items-end justify-between h-[200px] border-b border-slate-200 pb-2 relative mt-4">
                   
                   {todayForecast.prices.map((item, i) => {
                     const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
-                    // Skalowanie wysokości słupka do max 140px
                     const barHeight = Math.max(12, ((item.price - todayForecast.absoluteMinPrice) / range) * 140);
                     const isMin = item.price === todayForecast.absoluteMinPrice;
                     const isMax = item.price === todayForecast.absoluteMaxPrice;
-                    const isFullHour = item.time.endsWith('00');
+                    
+                    // Określamy skrajne pozycje dla bezpiecznego renderowania dymków
+                    const isFirst = i === 0;
+                    const isLast = i === todayForecast.prices.length - 1;
                     
                     return (
                       <div 
                         key={i} 
                         className="flex-1 flex flex-col items-center h-full justify-end relative cursor-crosshair group"
                       >
-                        {/* Tooltip pokazywany na najechanie (Hover) */}
-                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 transition-all z-50 whitespace-nowrap pointer-events-none flex flex-col items-center">
+                        {/* Tooltip (Hover) - inteligentne pozycjonowanie na krawędziach */}
+                        <div className={`absolute bottom-full mb-3 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 transition-all z-50 whitespace-nowrap pointer-events-none flex flex-col items-center ${isFirst ? 'left-0' : isLast ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}>
                           <span className="text-slate-400 font-medium mb-1">{item.time}</span>
                           <span className={item.price < 0 ? 'text-emerald-400' : 'text-white'}>
                             {item.price.toFixed(3)} PLN
                           </span>
                           {/* Trójkącik u dołu tooltipa */}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                          <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${isFirst ? 'left-3' : isLast ? 'right-3' : 'left-1/2 -translate-x-1/2'}`}></div>
                         </div>
 
-                        {/* Etykieta ceny nad słupkiem (dopasowana wielkość czcionki) */}
-                        <span className={`text-[9px] sm:text-[10px] font-bold mb-1.5 transition-colors block min-h-[16px] ${
-                          isMin ? 'text-emerald-500' : 
-                          isMax ? 'text-red-500' : 
-                          'text-transparent group-hover:text-slate-500'
-                        }`}>
-                          {isMin || isMax ? item.price.toFixed(2) : item.price.toFixed(2)}
-                        </span>
+                        {/* Etykieta Min/Max - ABSOLUTE (nie zajmuje fizycznie szerokości kolumny!) */}
+                        {(isMin || isMax) && (
+                          <span className={`absolute bottom-[calc(100%+5px)] text-[9px] sm:text-[10px] font-bold ${isMin ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {item.price.toFixed(2)}
+                          </span>
+                        )}
 
-                        {/* Słupek z wykresem (zmniejszono min-w zeby latwiej sie kurczyly) */}
+                        {/* Słupek z wykresem */}
                         <div 
-                          className={`w-[85%] max-w-[16px] min-w-[3px] rounded-t-sm transition-all duration-300 ${
+                          className={`w-[85%] max-w-[16px] min-w-[2px] rounded-t-sm transition-all duration-300 ${
                             isMin ? 'bg-emerald-500 shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)]' : 
                             isMax ? 'bg-red-500' : 
                             'bg-slate-200 group-hover:bg-blue-400 group-hover:h-[calc(100%+4px)]'
