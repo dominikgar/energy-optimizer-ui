@@ -8,11 +8,11 @@ import { auth } from '@clerk/nextjs/server';
 import { UserButton } from '@clerk/nextjs';
 
 // --- IMPORTY NASZYCH WYDZIELONYCH KOMPONENTÓW ---
-import LandingPage from '../components/LandingPage';
-import TabRadar from '../components/TabRadar';
-import TabHistory from '../components/TabHistory';
-import TabAdvisor from '../components/TabAdvisor';
-import TabApi from '../components/TabApi';
+import LandingPage from './components/LandingPage';
+import TabRadar from './components/TabRadar';
+import TabHistory from './components/TabHistory';
+import TabAdvisor from './components/TabAdvisor';
+import TabApi from './components/TabApi';
 
 // --- KONFIGURACJA BAZY DANYCH ---
 const pool = new Pool({
@@ -33,7 +33,7 @@ export default async function Home({ searchParams }) {
   const days = parseInt(resolvedParams.days) || 3;
   const selectedProvider = resolvedParams.provider || 'G11_TAURON';
 
-  // Globalne style i animacje (ponieważ używamy Tailwind przez CDN/generowanie)
+  // Globalne style i animacje
   const globalStyles = `
     @keyframes fade-in-up {
       0% { opacity: 0; transform: translateY(20px); }
