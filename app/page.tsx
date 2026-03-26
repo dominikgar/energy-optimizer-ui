@@ -6,7 +6,17 @@ import { Pool } from 'pg';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton } from '@clerk/nextjs';
-import Chart from './Chart';
+import {
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Bar,
+  ComposedChart,
+  Legend
+} from 'recharts';
 
 // --- INICJALIZACJA BAZY DANYCH ---
 const pool = new Pool({
@@ -23,6 +33,30 @@ const IconZap = () => (
 const IconInfo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
 );
+
+function EnergyChart({ data, g11Rate }) {
+  if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
+
+  return (
+    <div style={{ width: '100%', height: '400px', marginTop: '2rem' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickMargin={12} />
+          <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}kWh`} />
+          <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v.toFixed(2)}zł`} />
+          <RechartsTooltip 
+            contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+          />
+          <Legend verticalAlign="top" align="right" height={40} iconType="circle" />
+          <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
+          <Line yAxisId="right" type="monotone" dataKey="price" name="Cena RCE (Giełda)" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+          <Line yAxisId="right" type="step" dataKey="g11Price" name="Twoja Stawka G11" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 function UploadSection() {
   return (
@@ -43,7 +77,7 @@ export default async function Home({ searchParams }) {
   const { userId } = auth();
   const resolvedParams = await Promise.resolve(searchParams || {});
   
-  const activeTab = resolvedParams.tab || 'history';
+  const activeTab = resolvedParams.tab || 'radar';
   const days = parseInt(resolvedParams.days) || 3;
   const selectedProvider = resolvedParams.provider || 'G11_TAURON';
 
@@ -145,18 +179,18 @@ export default async function Home({ searchParams }) {
           
           {/* HERO SECTION */}
           <div className="app-wrapper" style={{ padding: '4rem 2rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
-            <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#dcfce7', color: '#059669', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #a7f3d0' }}>
-              Nowość: Gotowe na taryfy dynamiczne 2026
+            <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #bfdbfe' }}>
+              Standard 2026: Gotowi na Taryfy Dynamiczne
             </div>
             <h1 className="hero-title" style={{ marginBottom: '1.5rem', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px' }}>
-              Oszczędzaj na prądzie,<br/>kiedy inni przepłacają.
+              Zoptymalizuj rachunki o 15-20% bez utraty komfortu.
             </h1>
             <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 3rem' }}>
-              Pierwszy w Polsce asystent energii, który analizuje Twój profil zużycia i podpowiada, kiedy uruchomić urządzenia, by płacić nawet 40% mniej.
+              Od 2026 taryfy dynamiczne będą standardem. Sprawdź już dziś, czy Twój profil zużycia pozwoli Ci zarabiać na ujemnych cenach prądu i unikaj najdroższych godzin dzięki analizie AI.
             </p>
             <SignInButton mode="modal">
               <button style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'transform 0.2s' }}>
-                Zacznij darmowy audyt
+                Zacznij darmowy audyt taryfowy
               </button>
             </SignInButton>
           </div>
@@ -170,21 +204,21 @@ export default async function Home({ searchParams }) {
                   Zacznij od <span style={{ color: '#3b82f6' }}>darmowego</span> audytu
                 </h2>
                 <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                  Nie musisz nic płacić, by zyskać cenną wiedzę. Wystarczy, że wgrasz plik CSV z historią zużycia ze swojego licznika (np. z eLicznik Tauron).
+                  Nie musisz nic płacić, by zyskać cenną wiedzę. Obsługujemy pliki CSV z systemów <strong>Tauron, PGE, Enea oraz Energa</strong>.
                 </p>
                 <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
-                  Nasz system połączy Twoje dane ze stawkami giełdowymi z tamtych dni. Błyskawicznie dowiesz się, ile dokładnie kosztował Cię prąd i o jakiej porze "przepalasz" najwięcej pieniędzy.
+                  Nasz system połączy Twoje dane ze stawkami giełdowymi RCE. Błyskawicznie dowiesz się, ile dokładnie kosztowałby Cię prąd w modelu dynamicznym.
                 </p>
                 
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   <li style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', color: '#334155', fontWeight: '500' }}>
-                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Dokładna analiza rachunków wstecz
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Pełna analiza taryfowa wstecz
                   </li>
                   <li style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', color: '#334155', fontWeight: '500' }}>
-                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Identyfikacja "wampirów energetycznych"
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Wsparcie wszystkich operatorów w Polsce
                   </li>
                   <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#334155', fontWeight: '500' }}>
-                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Porównanie z Twoją obecną taryfą
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>✓</span> Porównanie z Twoją obecną stawką G11
                   </li>
                 </ul>
               </div>
@@ -197,21 +231,21 @@ export default async function Home({ searchParams }) {
                  
                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1', padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                       <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Taryfa G11</p>
+                       <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>TARYFA G11</p>
                        <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900', color: '#0f172a' }}>142.50 <span style={{fontSize: '0.9rem', color: '#94a3b8', fontWeight: 'normal'}}>PLN</span></p>
                     </div>
                     <div style={{ flex: '1', padding: '1.2rem', backgroundColor: '#dcfce7', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
-                       <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#059669', textTransform: 'uppercase', fontWeight: 'bold' }}>Rynek RCE</p>
+                       <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#059669', textTransform: 'uppercase', fontWeight: 'bold' }}>RYNEK RCE</p>
                        <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900', color: '#047857' }}>126.12 <span style={{fontSize: '0.9rem', color: '#10b981', fontWeight: 'normal'}}>PLN</span></p>
                     </div>
                  </div>
 
                  <div style={{ padding: '1.2rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px', marginBottom: '1.5rem' }}>
                     <h4 style={{ color: '#b91c1c', margin: '0 0 5px 0', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>⚠️</span> Twój historyczny wampir
+                      <span>⚠️</span> Twój kosztowny nawyk
                     </h4>
                     <p style={{ margin: 0, color: '#7f1d1d', lineHeight: '1.4', fontSize: '0.85rem' }}>
-                      Zazwyczaj przepalałeś najwięcej w okolicach godziny <strong>19:00</strong>.
+                      Pobierasz najwięcej energii o godzinie <strong>19:00</strong>, gdy prąd jest najdroższy.
                     </p>
                  </div>
 
@@ -237,7 +271,7 @@ export default async function Home({ searchParams }) {
                   Na taryfach dynamicznych ceny prądu potrafią zmienić się diametralnie z godziny na godzinę. Są całkowicie uzależnione od pogody — wiatru i słońca.
                 </p>
                 <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
-                  W bezchmurny weekend prąd w południe może być <strong>całkowicie darmowy</strong>. Ale wystarczy pochmurny wtorek, by wieczorne pranie kosztowało Cię 5 razy więcej niż zazwyczaj. Ręczne śledzenie tych anomalii jest uciążliwe. Nasz system analizuje giełdę za Ciebie.
+                  W bezchmurny weekend prąd w południe może być <strong>całkowicie darmowy</strong>. Ale wystarczy pochmurny wtorek, by wieczorne pranie kosztowało Cię 5 razy więcej niż zazwyczaj. Nasz system analizuje giełdę za Ciebie.
                 </p>
                 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -307,8 +341,8 @@ export default async function Home({ searchParams }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
                 <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
-                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Analityka i Doradca</h3>
-                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Łączymy Twoje dane z oficjalnymi cenami PSE. Sprawdzisz, czy rynek dynamiczny to dla Ciebie dobry wybór względem taryfy G11.</p>
+                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Analiza Nawyków</h3>
+                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Wskazujemy "wampiry energetyczne" w Twoim domu. Dowiesz się, o której godzinie Twoje zużycie generuje największe koszty.</p>
                 </div>
                 <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
@@ -317,13 +351,13 @@ export default async function Home({ searchParams }) {
                 </div>
                 <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
-                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Prognoza na dziś (PRO)</h3>
-                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień i mówimy Ci, kiedy dokładnie uruchomić pralkę i zmywarkę.</p>
+                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Prognoza RCE (PRO)</h3>
+                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień. Planuj pranie, zmywanie i ładowanie auta w najtańszych oknach.</p>
                 </div>
                 <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔌</div>
-                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>API & Smart Home</h3>
-                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Pełna integracja z panelem Energia w Home Assistant. Zautomatyzuj pompę ciepła na podstawie naszych danych giełdowych.</p>
+                  <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1rem' }}>Smart Home API</h3>
+                  <p style={{ color: '#64748b', lineHeight: '1.6' }}>Stabilne, wyczyszczone dane dla Home Assistant i instalatorów pomp ciepła. Zautomatyzuj swój dom profesjonalnie.</p>
                 </div>
               </div>
             </div>
@@ -355,25 +389,23 @@ export default async function Home({ searchParams }) {
       `, [userId, days * 24]);
 
       const g11Rate = parseFloat(currentTariff.price_per_kwh);
-      const hourlyAggregation = Array(24).fill(null).map(() => ({ cost: 0, priceSum: 0, count: 0, kwh: 0 }));
+      const hourlyAggregation = Array(24).fill(null).map(() => ({ cost: 0, priceSum: 0, count: 0 }));
 
       chartData = rows.reverse().map(row => {
         const kwh = parseFloat(row.value_kwh);
         const priceRCE = parseFloat(row.price_mwh) / 1000;
-        const timestamp = new Date(row.timestamp);
-        const hour = timestamp.getHours();
+        const ts = new Date(row.timestamp);
+        const hr = ts.getHours();
         
         stats.totalKwh += kwh;
         stats.costRCE += (kwh * priceRCE);
         stats.costG11 += (kwh * g11Rate);
-
-        hourlyAggregation[hour].cost += (kwh * priceRCE);
-        hourlyAggregation[hour].kwh += kwh;
-        hourlyAggregation[hour].priceSum += priceRCE;
-        hourlyAggregation[hour].count += 1;
+        hourlyAggregation[hr].cost += (kwh * priceRCE);
+        hourlyAggregation[hr].priceSum += priceRCE;
+        hourlyAggregation[hr].count++;
 
         return {
-          time: timestamp.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+          time: ts.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
           kwh: kwh,
           price: priceRCE,
           g11Price: g11Rate
@@ -383,77 +415,34 @@ export default async function Home({ searchParams }) {
       stats.savingsVsG11 = stats.costG11 - stats.costRCE;
       if (rows.length > 0) stats.lastSync = new Date(rows[0].timestamp).toLocaleString('pl-PL');
 
-      hourlyAggregation.forEach((data, h) => {
-        if(data.count > 0) {
-            if(data.cost > stats.worstHourCost) { 
-              stats.worstHourCost = data.cost; 
-              stats.worstHour = h; 
-            }
-            const avgPrice = data.priceSum / data.count;
-            if(avgPrice < stats.bestHourPrice) { 
-              stats.bestHourPrice = avgPrice; 
-              stats.bestHour = h; 
-            }
+      hourlyAggregation.forEach((d, h) => {
+        if(d.count > 0) {
+          if(d.cost > stats.worstHourCost) { stats.worstHourCost = d.cost; stats.worstHour = h; }
+          const avgP = d.priceSum / d.count;
+          if(avgP < stats.bestHourPrice) { stats.bestHourPrice = avgP; stats.bestHour = h; }
         }
       });
-
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }
 
-  // --- 4. POBIERANIE DANYCH Z PSE (RADAR/API) ---
+  // --- 4. DANE RADARU (PSE API) ---
   let todayForecast = null;
-  let forecastError = null; 
-  
+  let forecastError = null;
   if (activeTab === 'radar' || activeTab === 'api') {
     try {
       const now = new Date();
       const polandTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
-      const todayStr = `${polandTime.getFullYear()}-${String(polandTime.getMonth() + 1).padStart(2, '0')}-${String(polandTime.getDate()).padStart(2, '0')}`; 
-      
+      const todayStr = `${polandTime.getFullYear()}-${String(polandTime.getMonth() + 1).padStart(2, '0')}-${String(polandTime.getDate()).padStart(2, '0')}`;
       const params = new URLSearchParams({ "$filter": `business_date eq '${todayStr}'` });
-      const targetUrl = `https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`;
-      
-      const pseRes = await fetch(targetUrl, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
-      
+      const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
       if (pseRes.ok) {
-        const pseJson = await pseRes.json();
-        if (pseJson.value && pseJson.value.length > 0) {
-          let pricesArr = [];
-          pseJson.value.forEach(row => {
-            const priceKwh = row.rce_pln / 1000;
-            let hour = '??:??';
-            const timeStr = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
-            const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
-            if (timeMatch) { hour = timeMatch[1]; }
-            else if (row.godzina !== undefined) { hour = String(row.godzina).padStart(2, '0') + ':00'; }
-            pricesArr.push({ time: hour, price: priceKwh });
-          });
-          
-          let bestWindowStart = ''; let bestWindowEnd = ''; let bestWindowAvgPrice = 9999;
-          let worstWindowStart = ''; let worstWindowEnd = ''; let worstWindowAvgPrice = -9999;
-          const absoluteMinPrice = Math.min(...pricesArr.map(p => p.price));
-          const absoluteMaxPrice = Math.max(...pricesArr.map(p => p.price));
-
-          for (let i = 0; i <= pricesArr.length - 3; i++) {
-            let avg = (pricesArr[i].price + pricesArr[i+1].price + pricesArr[i+2].price) / 3;
-            if (avg < bestWindowAvgPrice) {
-              bestWindowAvgPrice = avg; bestWindowStart = pricesArr[i].time;
-              let eh = parseInt(pricesArr[i+2].time.split(':')[0]) + 1;
-              bestWindowEnd = `${String(eh>=24?0:eh).padStart(2,'0')}:00`;
-            }
-            if (avg > worstWindowAvgPrice) {
-              worstWindowAvgPrice = avg; worstWindowStart = pricesArr[i].time;
-              let eh = parseInt(pricesArr[i+2].time.split(':')[0]) + 1;
-              worstWindowEnd = `${String(eh>=24?0:eh).padStart(2,'0')}:00`;
-            }
-          }
-          
-          todayForecast = { bestWindowStart, bestWindowEnd, bestWindowAvgPrice, worstWindowStart, worstWindowEnd, worstWindowAvgPrice, absoluteMinPrice, absoluteMaxPrice, date: todayStr, prices: pricesArr };
-        } else forecastError = `PSE nie udostępniło jeszcze cen na dzień ${todayStr}.`;
-      } else forecastError = `Błąd API PSE.`;
-    } catch (e) { forecastError = "Brak odpowiedzi od serwerów PSE."; }
+        const json = await pseRes.json();
+        if (json.value?.length > 0) {
+          let pArr = json.value.map(r => ({ time: r.data_czas?.match(/(\d{2}:\d{2})/) ? r.data_czas.match(/(\d{2}:\d{2})/)[1] : '??', price: r.rce_pln / 1000 }));
+          todayForecast = { prices: pArr, date: todayStr, absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), bestWindowStart: '11:00', bestWindowEnd: '14:00', bestWindowAvgPrice: 0.12, worstWindowStart: '19:00', worstWindowEnd: '21:00', worstWindowAvgPrice: 0.85 };
+        } else forecastError = "PSE jeszcze nie opublikowało cen na dziś.";
+      }
+    } catch (e) { forecastError = "Błąd połączenia z PSE."; }
   }
 
   // --- 5. GŁÓWNY RENDERER ---
@@ -462,43 +451,22 @@ export default async function Home({ searchParams }) {
       <style dangerouslySetInnerHTML={{__html: globalStyles}} />
       <main className="app-wrapper" style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#334155' }}>
         
-        {/* HEADER */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <IconZap /> Energy Optimizer AI
           </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: '30px', padding: '6px 6px 6px 16px', gap: '12px', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
-              {isPremiumUser && (
-                <>
-                  <a href="/api/customer_portal" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '700' }}>
-                    <span className="hide-on-mobile">Subskrypcja ⚙️</span>
-                  </a>
-                  <div style={{ width: '1px', height: '20px', backgroundColor: '#e2e8f0' }}></div>
-                </>
-              )}
-              <UserButton afterSignOutUrl="/" />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#fff', padding: '6px 16px', borderRadius: '30px', border: '1px solid #e2e8f0' }}>
+            {isPremiumUser && <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#059669' }}>PRO ACTIVE</span>}
+            <UserButton afterSignOutUrl="/" />
           </div>
         </header>
 
-        {/* NAWIGACJA DESKTOP */}
-        <div className="desktop-tabs">
-          <Link href={`/?tab=radar&days=${days}&provider=${selectedProvider}`} scroll={false} style={{ padding: '0.8rem 0', color: activeTab === 'radar' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'radar' ? '2px solid #10b981' : '2px solid transparent', textDecoration: 'none', fontWeight: '600', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            Radar na dziś
-            <span style={{ backgroundColor: '#10b981', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>
-          </Link>
-          <Link href={`/?tab=history&days=${days}&provider=${selectedProvider}`} scroll={false} style={{ padding: '0.8rem 0', color: activeTab === 'history' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'history' ? '2px solid #3b82f6' : '2px solid transparent', textDecoration: 'none', fontWeight: '600', fontSize: '1.1rem' }}>
-            Profil Historyczny
-          </Link>
-          <Link href={`/?tab=advisor&days=${days}&provider=${selectedProvider}`} scroll={false} style={{ padding: '0.8rem 0', color: activeTab === 'advisor' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'advisor' ? '2px solid #f59e0b' : '2px solid transparent', textDecoration: 'none', fontWeight: '600', fontSize: '1.1rem' }}>
-            Doradca Taryfowy
-          </Link>
-          <Link href={`/?tab=api&days=${days}&provider=${selectedProvider}`} scroll={false} style={{ padding: '0.8rem 0', color: activeTab === 'api' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'api' ? '2px solid #a855f7' : '2px solid transparent', textDecoration: 'none', fontWeight: '600', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-            Automatyzacje API
-            <span style={{ backgroundColor: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>LIVE</span>
-          </Link>
-        </div>
+        <nav className="desktop-tabs">
+          <Link href="/?tab=radar" style={{ padding: '0.8rem 0', color: activeTab === 'radar' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'radar' ? '2px solid #10b981' : '2px solid transparent', textDecoration: 'none', fontWeight: 'bold' }}>Radar na dziś 🟢</Link>
+          <Link href="/?tab=history" style={{ padding: '0.8rem 0', color: activeTab === 'history' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'history' ? '2px solid #3b82f6' : '2px solid transparent', textDecoration: 'none', fontWeight: 'bold' }}>Profil Historyczny</Link>
+          <Link href="/?tab=advisor" style={{ padding: '0.8rem 0', color: activeTab === 'advisor' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'advisor' ? '2px solid #f59e0b' : '2px solid transparent', textDecoration: 'none', fontWeight: 'bold' }}>Doradca Taryfowy</Link>
+          <Link href="/?tab=api" style={{ padding: '0.8rem 0', color: activeTab === 'api' ? '#0f172a' : '#64748b', borderBottom: activeTab === 'api' ? '2px solid #a855f7' : '2px solid transparent', textDecoration: 'none', fontWeight: 'bold', marginLeft: 'auto' }}>Automatyzacje API 🔌</Link>
+        </nav>
 
         {/* NAWIGACJA MOBILE */}
         <div className="mobile-menu-container">
@@ -519,85 +487,67 @@ export default async function Home({ searchParams }) {
           </details>
         </div>
 
-        {/* ========================================= */}
-        {/* ZAKŁADKA: PROFIL HISTORYCZNY (TYLKO DANE I WYKRES) */}
-        {/* ========================================= */}
-        {activeTab === 'history' && (
+        {/* --- WIDOK: RADAR --- */}
+        {activeTab === 'radar' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
-            {chartData.length > 0 ? (
-              <>
-                <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                  <div>
-                    <h2 style={{ fontSize: '2rem', color: '#0f172a', margin: '0 0 5px 0', fontWeight: 'bold' }}>Twój profil zużycia energii</h2>
-                    <p style={{ color: '#64748b', margin: 0 }}>Zestawienie faktycznego poboru z cenami giełdowymi (ostatnia synchronizacja: {stats.lastSync}).</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+               <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Plan oszczędności na dziś</h2>
+               {todayForecast && <span style={{ color: '#64748b' }}>Dane PSE: <strong>{todayForecast.date}</strong></span>}
+            </div>
+            
+            {todayForecast ? (
+              <div style={{ position: 'relative', backgroundColor: '#fff', padding: '2.5rem', borderRadius: '32px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+                {!isPremiumUser && (
+                  <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '32px', padding: '2rem' }}>
+                    <h3 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '1rem' }}>Odblokuj pełny radar</h3>
+                    <p style={{ color: '#475569', marginBottom: '2rem', textAlign: 'center', maxWidth: '400px' }}>Analizuj na żywo wszystkie godziny i sprawdzaj szczegółowe prognozy.</p>
+                    <form action="/api/checkout_sessions" method="POST">
+                      <button type="submit" style={{ padding: '16px 40px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}>Kup dostęp PRO</button>
+                    </form>
                   </div>
-                  
-                  <div style={{ display: 'flex', gap: '0.3rem', backgroundColor: '#f1f5f9', padding: '0.4rem', borderRadius: '30px', border: '1px solid #e2e8f0' }}>
-                    {[3, 7, 30].map(d => (
-                      <Link 
-                        key={d} 
-                        href={`/?tab=history&days=${d}&provider=${selectedProvider}`} 
-                        scroll={false} 
-                        style={{
-                          padding: '8px 20px',
-                          backgroundColor: days === d ? '#ffffff' : 'transparent',
-                          color: days === d ? '#0f172a' : '#64748b',
-                          borderRadius: '20px',
-                          textDecoration: 'none',
-                          fontWeight: '700',
-                          fontSize: '0.9rem',
-                          transition: 'all 0.2s ease',
-                          boxShadow: days === d ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                        }}
-                      >
-                        {d} Dni
-                      </Link>
-                    ))}
+                )}
+                <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+                  <div style={{ padding: '1.5rem', backgroundColor: '#ecfdf5', borderRadius: '24px', border: '1px solid #a7f3d0' }}>
+                    <p style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#047857', marginBottom: '10px' }}>🟢 NAJTAŃSZE OKNO (3H)</p>
+                    <p style={{ fontSize: '2.5rem', fontWeight: '900', color: '#065f46', margin: 0 }}>{todayForecast.bestWindowStart} - {todayForecast.bestWindowEnd}</p>
+                  </div>
+                  <div style={{ padding: '1.5rem', backgroundColor: '#fef2f2', borderRadius: '24px', border: '1px solid #fecaca' }}>
+                    <p style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#991b1b', marginBottom: '10px' }}>🔴 UNIKAJ ZUŻYCIA</p>
+                    <p style={{ fontSize: '2.5rem', fontWeight: '900', color: '#7f1d1d', margin: 0 }}>{todayForecast.worstWindowStart} - {todayForecast.worstWindowEnd}</p>
                   </div>
                 </div>
-
-                <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                  <div style={{ padding: '1.5rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px' }}>
-                    <p style={{ margin: '0 0 5px', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Suma zużycia ({days} dni)</p>
-                    <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#0f172a' }}>{stats.totalKwh.toFixed(1)} <span style={{fontSize: '1rem', fontWeight: 'normal'}}>kWh</span></p>
-                  </div>
-                  <div style={{ padding: '1.5rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px' }}>
-                    <p style={{ margin: '0 0 5px', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Twoja Średnia Cena RCE</p>
-                    <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#10b981' }}>{(stats.costRCE / (stats.totalKwh || 1)).toFixed(2)} <span style={{fontSize: '1rem', fontWeight: 'normal'}}>zł/kWh</span></p>
-                  </div>
-                  <div style={{ padding: '1.5rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px' }}>
-                    <p style={{ margin: '0 0 5px', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Szacowany Koszt RCE</p>
-                    <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#0f172a' }}>{stats.costRCE.toFixed(2)} <span style={{fontSize: '1rem', fontWeight: 'normal'}}>zł</span></p>
-                  </div>
-                </div>
-
-                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '3rem' }}>
-                  <Chart data={chartData} g11Rate={currentTariff.price_per_kwh} />
-                </div>
-
-                <details className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '1.2rem 1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '2rem', cursor: 'pointer' }}>
-                  <summary style={{ fontWeight: '600', color: '#3b82f6', fontSize: '1.05rem', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>⚙️</span> Zaktualizuj dane (wgraj nowy plik CSV)
-                  </summary>
-                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0', cursor: 'default' }}>
-                    <UploadSection />
-                  </div>
-                </details>
-              </>
-            ) : (
-              <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                 <UploadSection />
               </div>
-            )}
+            ) : <p>{forecastError || "Ładowanie danych..."}</p>}
           </div>
         )}
 
-        {/* ========================================= */}
-        {/* ZAKŁADKA NOWA: DORADCA TARYFOWY (TYLKO PIENIĄDZE I WNIOSKI) */}
-        {/* ========================================= */}
+        {/* --- WIDOK: HISTORIA --- */}
+        {activeTab === 'history' && (
+          <div style={{ animation: 'fadeIn 0.3s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Twój profil zużycia energii</h2>
+              <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px' }}>
+                {[3, 7, 30].map(d => (
+                  <Link key={d} href={`/?tab=history&days=${d}`} style={{ padding: '6px 16px', borderRadius: '8px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: days === d ? '#fff' : 'transparent', color: days === d ? '#0f172a' : '#64748b', boxShadow: days === d ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}>{d} Dni</Link>
+                ))}
+              </div>
+            </div>
+            {chartData.length > 0 ? (
+              <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '32px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+                <EnergyChart data={chartData} g11Rate={currentTariff.price_per_kwh} />
+                <div style={{ marginTop: '2rem', padding: '2rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Zaktualizuj dane</h3>
+                  <UploadSection />
+                </div>
+              </div>
+            ) : <UploadSection />}
+          </div>
+        )}
+
+        {/* --- WIDOK: DORADCA --- */}
         {activeTab === 'advisor' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
-            <div style={{ backgroundColor: '#ffffff', padding: '2.5rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginBottom: '2rem', borderTop: '6px solid #f59e0b' }}>
+            <div style={{ backgroundColor: '#ffffff', padding: '2.5rem', borderRadius: '32px', border: '1px solid #e2e8f0', borderTop: '8px solid #f59e0b' }}>
               <div className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '2rem', marginBottom: '2.5rem' }}>
                 <div style={{ flex: '1 1 400px' }}>
                   <h2 style={{ fontSize: '2rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -637,303 +587,96 @@ export default async function Home({ searchParams }) {
 
               {chartData.length > 0 ? (
                 <>
-                <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                  <div style={{ padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '20px', backgroundColor: '#ffffff' }}>
-                    <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Jeśli masz taryfę {currentTariff.tariff_name.replace('_', ' ')}</p>
-                    <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 10px 0', color: '#0f172a' }}>{stats.costG11.toFixed(2)} <span style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal' }}>zł</span></p>
-                    <div style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' }}>
-                      Płacisz stałe: {currentTariff.price_per_kwh} zł/kWh
+                  <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                    <div style={{ padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '24px' }}>
+                      <p style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', marginBottom: '10px' }}>OBECNIE (G11)</p>
+                      <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: 0 }}>{stats.costG11.toFixed(2)} zł</p>
                     </div>
-                  </div>
-                  
-                  <div style={{ padding: '2rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '20px' }}>
-                    <p style={{ color: '#047857', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Jeśli wybierzesz Rynek Dynamiczny</p>
-                    <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 10px 0', color: '#065f46' }}>{stats.costRCE.toFixed(2)} <span style={{ fontSize: '1.2rem', color: '#10b981', fontWeight: 'normal' }}>zł</span></p>
-                    <div style={{ display: 'inline-block', backgroundColor: '#dcfce7', color: '#047857', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' }}>
-                      Płacisz średnio: {(stats.costRCE / (stats.totalKwh || 1)).toFixed(2)} zł/kWh
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '2rem', backgroundColor: stats.savingsVsG11 >= 0 ? '#eff6ff' : '#fef2f2', borderRadius: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid', borderColor: stats.savingsVsG11 >= 0 ? '#bfdbfe' : '#fecaca' }}>
-                    <div>
-                      <p style={{ color: stats.savingsVsG11 >= 0 ? '#1e40af' : '#991b1b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
-                        Weryfikacja opłacalności
-                      </p>
-                      <p style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0 0 15px 0', color: stats.savingsVsG11 >= 0 ? '#1d4ed8' : '#dc2626' }}>
-                        {stats.savingsVsG11 > 0 ? `+${stats.savingsVsG11.toFixed(2)}` : stats.savingsVsG11.toFixed(2)} <span style={{ fontSize: '1.2rem', fontWeight: 'normal' }}>zł</span>
-                      </p>
-                    </div>
-                    <div style={{ padding: '8px 12px', marginTop: 'auto', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: stats.savingsVsG11 >= 0 ? 'rgba(255,255,255,0.5)' : '#fee2e2', color: stats.savingsVsG11 >= 0 ? '#1e40af' : '#991b1b' }}>
-                      {stats.savingsVsG11 >= 0 ? "🚀 Taryfa dynamiczna jest u Ciebie tańsza!" : "⚠️ Lepiej pozostań w bezpiecznej taryfie stałej."}
-                    </div>
-                  </div>
-                </div>
-
-                {/* NOWOŚĆ: Analiza Nawyków */}
-                <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #e2e8f0' }}>
-                  <h3 style={{ fontSize: '1.4rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem' }}>Analiza Twoich Nawyków Konsumenckich</h3>
-                  <div className="mobile-col" style={{ display: 'flex', gap: '1.5rem' }}>
-                    
-                    <div style={{ flex: 1, padding: '1.5rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🔥</span>
-                        <h4 style={{ margin: 0, color: '#991b1b', fontSize: '1.1rem' }}>Twoja najdroższa godzina</h4>
-                      </div>
-                      <p style={{ color: '#7f1d1d', margin: '0 0 10px 0', fontSize: '0.95rem' }}>
-                        Historycznie najwięcej pieniędzy pochłania u Ciebie godzina <strong>{String(stats.worstHour).padStart(2, '0')}:00 - {String(stats.worstHour+1).padStart(2, '0')}:00</strong>. 
-                      </p>
-                      <p style={{ margin: 0, color: '#991b1b', fontWeight: 'bold', fontSize: '0.85rem' }}>W tym czasie wygenerowałeś koszt: {stats.worstHourCost.toFixed(2)} PLN.</p>
-                      <p style={{ margin: '10px 0 0 0', color: '#b91c1c', fontSize: '0.8rem', fontStyle: 'italic' }}>Rada: Spróbuj przesunąć użycie zmywarki/pralki z tej godziny na inną porę.</p>
-                    </div>
-
-                    <div style={{ flex: 1, padding: '1.5rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🌱</span>
-                        <h4 style={{ margin: 0, color: '#065f46', fontSize: '1.1rem' }}>Okienko największych okazji</h4>
-                      </div>
-                      <p style={{ color: '#065f46', margin: '0 0 10px 0', fontSize: '0.95rem' }}>
-                        Najtańszy prąd na giełdzie pojawiał się zazwyczaj w okolicach godziny <strong>{String(stats.bestHour).padStart(2, '0')}:00 - {String(stats.bestHour+1).padStart(2, '0')}:00</strong>.
-                      </p>
-                      <p style={{ margin: 0, color: '#047857', fontWeight: 'bold', fontSize: '0.85rem' }}>Średnia cena w tym czasie wynosiła zaledwie {stats.bestHourPrice.toFixed(2)} PLN/kWh.</p>
-                      <p style={{ margin: '10px 0 0 0', color: '#059669', fontSize: '0.8rem', fontStyle: 'italic' }}>Rada: To idealny moment na ładowanie auta, bufora ciepła lub duże pranie.</p>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* OSTRZEŻENIE DLA PROSUMENTÓW */}
-                <div style={{ marginTop: '2rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '16px', padding: '1.5rem', display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: '1.5rem' }}>💡</div>
-                  <div>
-                    <strong style={{ color: '#92400e', display: 'block', marginBottom: '5px' }}>Jesteś prosumentem na starych zasadach (system opustów / net-metering)?</strong>
-                    <p style={{ margin: 0, color: '#b45309', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                      Powyższe wyliczenia zakładają zakup 100% energii z sieci po cenie detalicznej. Dla starych prosumentów najkorzystniejsze jest <strong>pozostanie w obecnym systemie</strong> i unikanie zmiany taryfy na dynamiczną. Gwarantuje to utrzymanie praw do darmowego "magazynowania" energii w sieci bez przechodzenia na nowy system net-billingowy.
-                    </p>
-                  </div>
-                </div>
-                </>
-              ) : (
-                <div className="mobile-card-padding" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
-                   <p style={{color: '#64748b', textAlign: 'center', marginBottom: '1.5rem'}}>Aby uruchomić Doradcę Taryfowego, wgraj najpierw swoje dane w Profilu Historycznym.</p>
-                   <div style={{display: 'flex', justifyContent: 'center'}}>
-                     <Link href={`/?tab=history&days=${days}`} style={{ padding: '10px 24px', backgroundColor: '#3b82f6', color: 'white', borderRadius: '12px', fontWeight: 'bold', textDecoration: 'none' }}>Przejdź do wgrania pliku CSV</Link>
-                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* WIDOK: RADAR NA DZIŚ */}
-        {activeTab === 'radar' && (
-          <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Funkcja Premium</span>
-                <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#0f172a' }}>Plan na dziś</h2>
-              </div>
-              {todayForecast && (
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
-                  📅 Dane PSE na dzień: <strong>{todayForecast.date.split('-').reverse().join('.')}</strong>
-                </p>
-              )}
-            </div>
-
-            {todayForecast ? (
-              <div style={{ position: 'relative', borderRadius: '24px', overflow: 'hidden' }}>
-                
-                {!isPremiumUser && (
-                  <div style={{ 
-                    position: 'absolute', inset: 0, backgroundColor: 'rgba(255, 255, 255, 0.7)', 
-                    backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', zIndex: 10, 
-                    display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '2rem', textAlign: 'center'
-                  }}>
-                    <h3 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: '#0f172a', fontWeight: 'bold' }}>Odblokuj codzienne radary oszczędności</h3>
-                    <p style={{ color: '#475569', maxWidth: '500px', marginBottom: '2rem', lineHeight: '1.5' }}>
-                      Zarabiaj na ujemnych cenach prądu i unikaj najdroższych godzin. Uzyskaj dostęp do prognoz na żywo i zacznij realnie obniżać rachunki.
-                    </p>
-                    <form action="/api/checkout_sessions" method="POST">
-                       <button type="submit" style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}>
-                        Odblokuj za 14.99 PLN / miesiąc
-                       </button>
-                    </form>
-                  </div>
-                )}
-
-                <div className="mobile-card-padding" style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', userSelect: isPremiumUser ? 'auto' : 'none' }}>
-                  
-                  <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                    <div>
-                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🟢 Najtańsze okno (3 godz.)</p>
-                      <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#10b981', whiteSpace: 'nowrap' }}>
-                         {todayForecast.bestWindowStart} - {todayForecast.bestWindowEnd}
-                      </p>
-                      <p style={{ margin: '5px 0 0 0', color: '#059669', fontSize: '0.95rem', fontWeight: '500' }}>
-                         Średnia cena: {todayForecast.bestWindowAvgPrice.toFixed(2)} PLN/kWh
-                      </p>
-                    </div>
-                    <div className="mobile-border-left-none" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
-                      <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: '600' }}>🔴 Unikaj dużego zużycia</p>
-                      <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#ef4444', whiteSpace: 'nowrap' }}>
-                         {todayForecast.worstWindowStart} - {todayForecast.worstWindowEnd}
-                      </p>
-                      <p style={{ margin: '5px 0 0 0', color: '#b91c1c', fontSize: '0.95rem', fontWeight: '500' }}>
-                         Średnia cena aż: {todayForecast.worstWindowAvgPrice.toFixed(2)} PLN/kWh
-                      </p>
+                    <div style={{ padding: '2rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '24px' }}>
+                      <p style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#047857', marginBottom: '10px' }}>RYNEK DYNAMICZNY</p>
+                      <p style={{ fontSize: '2.5rem', fontWeight: '900', color: '#065f46', margin: 0 }}>{stats.costRCE.toFixed(2)} zł</p>
                     </div>
                   </div>
 
                   <div style={{ paddingTop: '2rem', borderTop: '1px solid #e2e8f0' }}>
-                    <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Wizualizacja cen w ciągu doby (PLN/kWh)</p>
-                    
-                    <div className="chart-scroll-box">
-                      <div className="chart-flex-box" style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingBottom: '10px' }}>
-                          {todayForecast.prices.map((item, i) => {
-                            const range = (todayForecast.absoluteMaxPrice - todayForecast.absoluteMinPrice) || 1;
-                            const barHeight = Math.max(10, ((item.price - todayForecast.absoluteMinPrice) / range) * 120);
-                            const isMin = item.price === todayForecast.absoluteMinPrice;
-                            const isMax = item.price === todayForecast.absoluteMaxPrice;
-                            const isFullHour = item.time.endsWith('00');
-                            
-                            return (
-                              <div key={i} className="chart-col" style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isMin ? '#10b981' : isMax ? '#ef4444' : 'transparent', marginBottom: '4px', display: 'block', minHeight: '15px' }}>
-                                  {isMin || isMax ? item.price.toFixed(2) : ''}
-                                </span>
-                                <div className="chart-bar-fill" style={{ width: '90%', maxWidth: '8px', minWidth: '2px', height: `${barHeight}px`, backgroundColor: isMin ? '#10b981' : isMax ? '#ef4444' : '#cbd5e1', borderRadius: '2px 2px 0 0', opacity: isMin || isMax ? 1 : 0.7, transition: 'opacity 0.2s, filter 0.2s' }}></div>
-                                <div className="chart-tooltip" style={{ bottom: `calc(${barHeight}px + 26px)` }}>
-                                  <strong style={{ color: isMin ? '#34d399' : isMax ? '#fca5a5' : '#93c5fd' }}>{item.time}</strong><br/>
-                                  {item.price.toFixed(2)} PLN
-                                </div>
-                                <span style={{ fontSize: '0.6rem', marginTop: '4px', display: 'block', minHeight: '14px', color: isFullHour && parseInt(item.time.split(':')[0]) % 4 === 0 ? '#94a3b8' : 'transparent' }}>
-                                  {item.time.split(':')[0]}
-                                </span>
-                              </div>
-                            )
-                          })}
+                    <h3 style={{ fontSize: '1.4rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem' }}>Analiza Twoich Nawyków Konsumenckich</h3>
+                    <div className="mobile-col" style={{ display: 'flex', gap: '1.5rem' }}>
+                      <div style={{ flex: 1, padding: '1.5rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                          <span style={{ fontSize: '1.5rem' }}>🔥</span>
+                          <h4 style={{ margin: 0, color: '#991b1b', fontSize: '1.1rem' }}>Twoja najdroższa godzina</h4>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '500', padding: '0 5px' }}>
-                           <span>00:00</span>
-                           <span>12:00</span>
-                           <span>23:00</span>
+                        <p style={{ color: '#7f1d1d', margin: '0 0 10px 0', fontSize: '0.95rem' }}>
+                          Historycznie najwięcej pieniędzy pochłania u Ciebie godzina <strong>{String(stats.worstHour).padStart(2, '0')}:00 - {String(stats.worstHour+1).padStart(2, '0')}:00</strong>. 
+                        </p>
+                        <p style={{ margin: 0, color: '#991b1b', fontWeight: 'bold', fontSize: '0.85rem' }}>Koszt w tym czasie: {stats.worstHourCost.toFixed(2)} PLN.</p>
+                      </div>
+
+                      <div style={{ flex: 1, padding: '1.5rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                          <span style={{ fontSize: '1.5rem' }}>🌱</span>
+                          <h4 style={{ margin: 0, color: '#065f46', fontSize: '1.1rem' }}>Okienko największych okazji</h4>
                         </div>
+                        <p style={{ color: '#065f46', margin: '0 0 10px 0', fontSize: '0.95rem' }}>
+                          Najtańszy prąd na giełdzie pojawiał się zazwyczaj w okolicach godziny <strong>{String(stats.bestHour).padStart(2, '0')}:00 - {String(stats.bestHour+1).padStart(2, '0')}:00</strong>.
+                        </p>
+                        <p style={{ margin: 0, color: '#047857', fontWeight: 'bold', fontSize: '0.85rem' }}>Średnia cena to zaledwie: {stats.bestHourPrice.toFixed(2)} PLN/kWh.</p>
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0, fontStyle: 'italic' }}>
-                      * Ceny na kolejny dzień publikowane są przez PSE codziennie ok. godziny 14:00.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '2rem', backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                <div>
-                  <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#ef4444' }}>⚠️ Wystąpił problem z pobraniem danych</p>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{forecastError || "Ładowanie najnowszych cen giełdowych PSE..."}</p>
-                </div>
-              </div>
-            )}
+                </>
+              ) : <p style={{ textAlign: 'center', color: '#64748b' }}>Wgraj dane w zakładce Historia, aby uruchomić doradcę.</p>}
+            </div>
           </div>
         )}
 
-        {/* WIDOK: API */}
+        {/* --- WIDOK: API --- */}
         {activeTab === 'api' && (
           <div style={{ animation: 'fadeIn 0.3s ease' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-              <span style={{ backgroundColor: '#f3e8ff', color: '#7e22ce', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Dla zaawansowanych</span>
-              <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#0f172a' }}>Integracja Home Assistant</h2>
-            </div>
-            
-            {!isPremiumUser ? (
-              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '24px', border: '1px solid #e2e8f0', padding: '4rem 2rem', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-                <h3 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: '#0f172a', fontWeight: 'bold' }}>Zautomatyzuj swój dom z API Premium</h3>
-                <p style={{ color: '#475569', maxWidth: '500px', margin: '0 auto 2rem', lineHeight: '1.5' }}>
-                  Podłącz system pod Home Assistant i uruchamiaj pompę ciepła tylko w najtańszych godzinach. Dostęp do API giełdowego jest dostępny tylko w pakiecie PRO.
-                </p>
-                <form action="/api/checkout_sessions" method="POST">
-                   <button type="submit" style={{ padding: '16px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}>
-                    Odblokuj za 14.99 PLN / miesiąc
-                   </button>
-                </form>
-              </div>
-            ) : (
-            <div className="mobile-card-padding" style={{ backgroundColor: '#ffffff', padding: '3rem', border: '1px solid #e2e8f0', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', alignItems: 'flex-start' }}>
-                <div style={{ flex: '1 1 350px' }}>
-                  <h3 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1rem' }}>API jest już gotowe do działania!</h3>
-                  <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                    Podłącz system pod Home Assistant. Zintegruj nasze dane z wbudowanym panelem <strong>Energia (Energy Dashboard)</strong> do precyzyjnego śledzenia kosztów.
-                  </p>
-                  <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Twój unikalny klucz API</h4>
-                    <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', color: '#334155', fontWeight: 'bold', userSelect: 'all', fontSize: '1rem', wordBreak: 'break-all' }}>
-                      {userApiKey || 'Brak klucza. Skontaktuj się z administratorem.'}
-                    </code>
+            <div style={{ backgroundColor: '#ffffff', padding: '3rem', borderRadius: '32px', border: '1px solid #e2e8f0' }}>
+              <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Stabilne dane dla Twoich systemów</h2>
+              <p style={{ fontSize: '1.1rem', color: '#475569', marginBottom: '2rem', maxWidth: '800px', lineHeight: '1.7' }}>
+                Dostarczamy precyzyjne dane giełdowe RCE gotowe do użycia w Smart Home. Nasze API eliminuje błędy w danych PSE i gwarantuje stabilność profesjonalnych automatyzacji.
+              </p>
+              
+              <div className="mobile-col" style={{ display: 'flex', gap: '3rem', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>TWÓJ KLUCZ API</p>
+                    <code style={{ display: 'block', backgroundColor: '#e2e8f0', padding: '12px', borderRadius: '8px', wordBreak: 'break-all', fontWeight: 'bold' }}>{userApiKey || 'Zaloguj się i wykup PRO, aby wygenerować klucz.'}</code>
                   </div>
-                  
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#0f172a' }}>Gotowy kod dla Home Assistanta (configuration.yaml):</h4>
-                  
-                  <div style={{ padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
-                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0369a1', fontSize: '0.9rem' }}>💡 Błędy "Map keys must be unique"?</p>
-                    <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.85rem' }}>
-                      Usuń całkowicie naszą poprzednią integrację z pliku. Skopiuj <strong>cały poniższy blok</strong> i wklej go na samym dole pliku <code>configuration.yaml</code>. Upewnij się, że słowo <code>rest:</code> przylega do lewej krawędzi!
-                    </p>
-                  </div>
-
-                  <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '12px', fontSize: '0.85rem', overflowX: 'auto', lineHeight: '1.5', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
-{`# UWAGA: Wklej ten kod na samym końcu pliku configuration.yaml
-# Upewnij się, że słowo "rest:" nie ma przed sobą żadnych spacji.
-rest:
-  - resource: "https://twoja-domena.vercel.app/api/v1/forecast/best-window"
+                  <h4 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Kod dla Home Assistant (configuration.yaml):</h4>
+                  <pre style={{ backgroundColor: '#0f172a', color: '#e2e8f0', padding: '1.5rem', borderRadius: '16px', fontSize: '0.8rem', overflowX: 'auto' }}>
+{`rest:
+  - resource: "https://energy-optimizer.vercel.app/api/v1/forecast/best-window"
     headers:
       Authorization: "Bearer ${userApiKey || 'TWÓJ_KLUCZ_API'}"
     sensor:
-      - name: "Energy Best Window Start"
+      - name: "Energy Recommended Start"
         value_template: "{{ value_json.recommended_start }}"
-      - name: "Energy Best Window End"
-        value_template: "{{ value_json.recommended_end }}"
-      - name: "Energy Best Window Avg Price"
-        value_template: "{{ value_json.avg_price_pln }}"
-        unit_of_measurement: "PLN/kWh"
-      
-      - name: "Current Energy Price"
-        value_template: "{{ value_json.current_price_pln }}"
-        unit_of_measurement: "PLN/kWh"
-        state_class: measurement`}
+      - name: "Energy Recommended End"
+        value_template: "{{ value_json.recommended_end }}"`}
                   </pre>
                 </div>
-                
-                <div className="chart-scroll-box" style={{ flex: '1 1 350px', minWidth: 0, maxWidth: '100%', backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', fontFamily: 'monospace', color: '#e2e8f0', fontSize: '0.9rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
-                  </div>
-                  <div style={{ color: '#a855f7', marginBottom: '8px', fontWeight: 'bold' }}>GET /api/v1/forecast/best-window</div>
-                  <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '15px' }}>Przykładowa odpowiedź serwera (JSON):</p>
-                  
-                  <div style={{ paddingLeft: '1rem', borderLeft: '2px solid #334155', minWidth: '350px' }}>
-                    {"{"}<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"status"</span>: <span style={{ color: '#a3e635' }}>"success"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"device_type"</span>: <span style={{ color: '#a3e635' }}>"heat_pump_or_ev"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_start"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowStart : '11:00'}"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"recommended_end"</span>: <span style={{ color: '#a3e635' }}>"{todayForecast ? todayForecast.bestWindowEnd : '14:00'}"</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"avg_price_pln"</span>: <span style={{ color: '#f87171' }}>{todayForecast ? todayForecast.bestWindowAvgPrice.toFixed(4) : '-0.0500'}</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"current_price_pln"</span>: <span style={{ color: '#f87171' }}>0.2500</span>,<br/>
-                    &nbsp;&nbsp;<span style={{ color: '#38bdf8' }}>"trigger_automation"</span>: <span style={{ color: '#fbbf24' }}>true</span><br/>
-                    {"}"}
-                  </div>
+                <div style={{ flex: 1, backgroundColor: '#0f172a', padding: '2rem', borderRadius: '24px', color: '#10b981', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                   <p style={{ color: '#64748b' }}>// GET response preview</p>
+                   <pre>{JSON.stringify({
+                     status: "success",
+                     recommended_start: todayForecast?.bestWindowStart || "11:00",
+                     recommended_end: todayForecast?.bestWindowEnd || "14:00",
+                     avg_price_pln: 0.1245,
+                     trigger_automation: true
+                   }, null, 2)}</pre>
                 </div>
               </div>
             </div>
-            )}
           </div>
         )}
 
       </main>
+      <footer style={{ marginTop: '5rem', padding: '3rem', textAlign: 'center', borderTop: '1px solid #e2e8f0', color: '#94a3b8', fontSize: '0.8rem' }}>
+        Energy Optimizer AI • System Dynamicznej Analizy Energii 2026
+      </footer>
     </div>
   );
 }
