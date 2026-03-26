@@ -7,8 +7,8 @@ const IconZap = () => (
 
 export default function LandingPage() {
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%' }}>
-      <header className="app-wrapper" style={{ paddingBottom: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
+      <header style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <IconZap /> Energy Optimizer
         </div>
@@ -21,11 +21,11 @@ export default function LandingPage() {
 
       <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#334155' }}>
         {/* HERO SECTION */}
-        <div className="app-wrapper" style={{ padding: '4rem 2rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
+        <div style={{ padding: '4rem 1.5rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto', boxSizing: 'border-box' }}>
           <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #bfdbfe' }}>
             Standard 2026: Gotowi na Taryfy Dynamiczne
           </div>
-          <h1 className="hero-title" style={{ marginBottom: '1.5rem', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px' }}>
+          <h1 style={{ marginBottom: '1.5rem', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1px', fontSize: 'clamp(2.5rem, 5vw, 4rem)' }}>
             Zoptymalizuj rachunki o 15-20% bez utraty komfortu.
           </h1>
           <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '3rem', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto' }}>
@@ -39,10 +39,10 @@ export default function LandingPage() {
         </div>
 
         {/* FREE AUDIT SECTION */}
-        <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
-          <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center', flexDirection: 'row-reverse' }}>
-            <div style={{ flex: '1 1 300px' }}>
-              <h2 style={{ fontSize: '2.5rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+        <div style={{ backgroundColor: '#ffffff', padding: '5rem 1.5rem', borderTop: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 300px', minWidth: 'min(100%, 300px)' }}>
+              <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.5rem)', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
                 Zacznij od <span style={{ color: '#3b82f6' }}>darmowego</span> audytu
               </h2>
               <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
@@ -57,16 +57,16 @@ export default function LandingPage() {
                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '500' }}><span style={{ color: '#10b981' }}>✓</span> Porównanie z Twoją obecną stawką G11</li>
               </ul>
             </div>
-            <div className="mobile-card-padding" style={{ flex: '1 1 300px', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ flex: '1 1 300px', minWidth: 'min(100%, 300px)', backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                   <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Profil Historyczny</span>
                </div>
-               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ flex: '1', padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 120px', padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                      <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold' }}>TARYFA G11</p>
                      <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>142.50 zł</p>
                   </div>
-                  <div style={{ flex: '1', padding: '1.2rem', backgroundColor: '#dcfce7', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
+                  <div style={{ flex: '1 1 120px', padding: '1.2rem', backgroundColor: '#dcfce7', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
                      <p style={{ margin: '0 0 5px', fontSize: '0.75rem', color: '#059669', fontWeight: 'bold' }}>RYNEK RCE</p>
                      <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900', color: '#047857' }}>126.12 zł</p>
                   </div>
@@ -80,10 +80,10 @@ export default function LandingPage() {
         </div>
 
         {/* Dlaczego warto (PREMIUM PREVIEW) */}
-        <div style={{ backgroundColor: '#f8fafc', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
-          <div className="app-wrapper mobile-flex-wrap" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center' }}>
-            <div style={{ flex: '1 1 300px' }}>
-              <h2 style={{ fontSize: '2.5rem', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+        <div style={{ backgroundColor: '#f8fafc', padding: '5rem 1.5rem', borderTop: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '3rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 300px', minWidth: 'min(100%, 300px)' }}>
+              <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.5rem)', color: '#0f172a', fontWeight: 'bold', marginBottom: '1.5rem', lineHeight: '1.2' }}>
                 Dlaczego intuicja to <span style={{ color: '#ef4444' }}>za mało?</span>
               </h2>
               <p style={{ color: '#475569', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
@@ -106,17 +106,17 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="mobile-card-padding" style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%', backgroundColor: '#ffffff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ flex: '1 1 300px', minWidth: 'min(100%, 300px)', backgroundColor: '#ffffff', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '10px' }}>
                   <span style={{ backgroundColor: '#fef08a', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Wyłącznie w wersji PRO</span>
                   <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '500' }}>Przykładowy radar dzienny</span>
                </div>
-               <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2.5rem' }}>
-                 <div>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                 <div style={{ paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
                     <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🟢 Najtańsze okno</p>
                     <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#10b981' }}>11:00 - 14:00</p>
                  </div>
-                 <div className="mobile-border-left-none" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+                 <div style={{ paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
                     <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' }}>🔴 Unikaj zużycia</p>
                     <p style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: '#ef4444' }}>19:00 - 22:00</p>
                  </div>
@@ -125,30 +125,30 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* FEATURES GRID */}
-        <div style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid #e2e8f0' }}>
-          <div className="app-wrapper" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* FEATURES GRID - ZAKTUALIZOWANA */}
+        <div style={{ backgroundColor: '#ffffff', padding: '5rem 1.5rem', borderTop: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
               <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Analiza Nawyków</h3>
-                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Wskazujemy "wampiry energetyczne" w Twoim domu. Dowiesz się, o której godzinie Twoje zużycie generuje największe koszty.</p>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Profil Historyczny</h3>
+                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Wgraj dane z Tauron, PGE, Enea lub Energa. Poznaj swoje zużycie i znajdź prądożerne "wampiry", które windują Twój rachunek.</p>
               </div>
               <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>💰</div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Kalkulator oszczędności</h3>
-                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Nasz algorytm AI oblicza, ile gotówki odzyskasz przy optymalizacji urządzeń domowych w odpowiednich godzinach.</p>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Doradca Taryfowy</h3>
+                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Porównaj obecną stawkę G11 z rynkiem RCE. Algorytm wskaże Ci Złotą Godzinę i przeliczy, ile gotówki odzyskasz przy optymalizacji.</p>
               </div>
               <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔮</div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Prognoza RCE (PRO)</h3>
-                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Codziennie analizujemy ceny giełdowe na bieżący dzień. Planuj pranie, zmywanie i ładowanie auta w najtańszych oknach.</p>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Radar na Dziś i Jutro</h3>
+                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Śledzimy ceny z PSE na żywo z jednodniowym wyprzedzeniem. Zawsze wiesz, kiedy zaplanować najcięższe prace domowe (wymaga PRO).</p>
               </div>
               <div style={{ padding: '2.5rem', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔌</div>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>Smart Home API</h3>
-                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Stabilne, wyczyszczone dane dla Home Assistant i instalatorów pomp ciepła. Zautomatyzuj swój dom profesjonalnie.</p>
+                <p style={{ color: '#64748b', lineHeight: '1.6' }}>Zasil swój Home Assistant danymi predykcyjnymi (24h w przód). Zautomatyzuj pompę ciepła, by działała wtedy, gdy prąd jest za darmo (wymaga PRO).</p>
               </div>
             </div>
           </div>
