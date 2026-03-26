@@ -146,6 +146,10 @@ export async function POST(req) {
         }
         
         query = query.slice(0, -1); // Usuwamy ostatni przecinek
+        
+        // ZMIANA: Dodana obsługa konfliktów (np. zmiana czasu letni/zimowy, zduplikowane wiersze od operatora)
+        query += ' ON CONFLICT (user_id, timestamp) DO UPDATE SET value_kwh = EXCLUDED.value_kwh';
+        
         await pool.query(query, values);
       }
 
