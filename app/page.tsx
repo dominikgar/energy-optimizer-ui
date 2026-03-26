@@ -149,8 +149,72 @@ export default async function Home({ searchParams }) {
       if (pseRes.ok) {
         const json = await pseRes.json();
         if (json.value?.length > 0) {
-          let pArr = json.value.map(r => ({ time: r.data_czas?.match(/(\d{2}:\d{2})/) ? r.data_czas.match(/(\d{2}:\d{2})/)[1] : '??', price: r.rce_pln / 1000 }));
-          todayForecast = { prices: pArr, date: todayStr, absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), bestWindowStart: '11:00', bestWindowEnd: '14:00', bestWindowAvgPrice: 0.12, worstWindowStart: '19:00', worstWindowEnd: '21:00', worstWindowAvgPrice: 0.85 };
+          // KROK 1: Bezpieczne parsowanie godzin (odporne na zmiany nazw kolumn w PSE)
+          let pArr = json.value.map(r => {
+            let hour = '??:??';
+            const timeStr = String(r.dtime || r.udtczas || r.udtczas_oreb || r.data_czas || '');
+            const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
+            
+            if (timeMatch) { 
+              hour = timeMatch[1]; 
+            } else if (r.period !== undefined || r.okres !== undefined) {
+              const p = parseInt(r.period || r.okres);
+              if (p > 25) { 
+                const h = Math.floor((p - 1) / 4);
+                const m = ((p - 1) % 4) * 15;
+                hour = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+              } else { 
+                hour = String(p - 1).padStart(2, '0') + ':00'; 
+              }
+            } else if (r.godzina !== undefined) { 
+              hour = String(r.godzina).padStart(2, '0') + ':00'; 
+            }
+            return { time: hour, price: r.rce_pln / 1000 };
+          });
+
+          // KROK 2: Dynamiczne obliczanie okien (najtańsze vs najdroższe 3H)
+          const isQuarterHourly = pArr.length > 30;
+          const elementsIn3Hours = isQuarterHourly ? 12 : 3;
+
+          let bestWindowStart = '', bestWindowEnd = '', bestWindowAvgPrice = 9999;
+          let worstWindowStart = '', worstWindowEnd = '', worstWindowAvgPrice = -9999;
+
+          for (let i = 0; i <= pArr.length - elementsIn3Hours; i++) {
+            let sum = 0;
+            for (let j = 0; j < elementsIn3Hours; j++) sum += pArr[i + j].price;
+            const avg = sum / elementsIn3Hours;
+
+            // Logika dla najtańszego okna
+            if (avg < bestWindowAvgPrice) {
+              bestWindowAvgPrice = avg;
+              bestWindowStart = pArr[i].time;
+              let endHour = parseInt(pArr[i + elementsIn3Hours - 1].time.split(':')[0]);
+              let endMin = parseInt(pArr[i + elementsIn3Hours - 1].time.split(':')[1] || '0', 10);
+              if (isQuarterHourly) { endMin += 15; if (endMin >= 60) { endHour += 1; endMin = 0; } } else { endHour += 1; }
+              if (endHour >= 24) endHour = 0;
+              bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+            }
+            
+            // Logika dla najdroższego okna
+            if (avg > worstWindowAvgPrice) {
+              worstWindowAvgPrice = avg;
+              worstWindowStart = pArr[i].time;
+              let endHour = parseInt(pArr[i + elementsIn3Hours - 1].time.split(':')[0]);
+              let endMin = parseInt(pArr[i + elementsIn3Hours - 1].time.split(':')[1] || '0', 10);
+              if (isQuarterHourly) { endMin += 15; if (endMin >= 60) { endHour += 1; endMin = 0; } } else { endHour += 1; }
+              if (endHour >= 24) endHour = 0;
+              worstWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+            }
+          }
+
+          todayForecast = { 
+            prices: pArr, 
+            date: todayStr, 
+            absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), 
+            absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), 
+            bestWindowStart, bestWindowEnd, bestWindowAvgPrice, 
+            worstWindowStart, worstWindowEnd, worstWindowAvgPrice 
+          };
         } else forecastError = "PSE jeszcze nie opublikowało cen na dziś.";
       }
     } catch (e) { forecastError = "Błąd połączenia z PSE."; }
