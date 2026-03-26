@@ -123,9 +123,11 @@ export default function TabRadar({ isPremiumUser, todayForecast, tomorrowForecas
             <p className="text-slate-400 font-bold uppercase text-sm tracking-widest mb-8">
               Wizualizacja cen w ciągu doby (PLN/kWh)
             </p>
-            <div className="w-full pb-6 overflow-x-auto">
-              <div className="flex flex-col w-full min-w-[500px] lg:min-w-0">
-                <div className="flex items-end justify-between h-[200px] border-b border-slate-200 pb-2 relative mt-4">
+            {/* ZMIANA 3: Usunięto overflow i ustawiono elastyczny w-full, aby zniknął suwak */}
+            <div className="w-full pb-6">
+              <div className="flex flex-col w-full">
+                {/* ZMIANA 2: Zwiększono wysokość wykresu do 240px, by zrobić miejsce na tooltipy u góry */}
+                <div className="flex items-end justify-between h-[240px] border-b border-slate-200 pb-2 relative mt-4">
                   
                   {activeForecast.prices.map((item, i) => {
                     const range = (activeForecast.absoluteMaxPrice - activeForecast.absoluteMinPrice) || 1;
@@ -165,8 +167,11 @@ export default function TabRadar({ isPremiumUser, todayForecast, tomorrowForecas
                         key={i} 
                         className="flex-1 flex flex-col items-center h-full justify-end relative cursor-crosshair group"
                       >
-                        {/* Właściwy Tooltip z Tailwind (Hover) powraca do żywych! */}
-                        <div className={`absolute bottom-full mb-3 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 transition-all z-50 whitespace-nowrap pointer-events-none flex flex-col items-center ${isFirst ? 'left-0' : isLast ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}>
+                        {/* ZMIANA 2: Tooltip pozycjonowany dynamicznie na podstawie wysokości słupka (bottom: barHeight) */}
+                        <div 
+                          className={`absolute mb-3 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 transition-all z-50 whitespace-nowrap pointer-events-none flex flex-col items-center ${isFirst ? 'left-0' : isLast ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}
+                          style={{ bottom: `${barHeight}px` }}
+                        >
                           <span className="text-slate-400 font-medium mb-1">{item.time}</span>
                           <span className={item.price < 0 ? 'text-emerald-400' : 'text-white'}>
                             {item.price.toFixed(3)} PLN
@@ -174,9 +179,12 @@ export default function TabRadar({ isPremiumUser, todayForecast, tomorrowForecas
                           <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${isFirst ? 'left-3' : isLast ? 'right-3' : 'left-1/2 -translate-x-1/2'}`}></div>
                         </div>
 
-                        {/* Etykieta Min/Max zawsze widoczna nad ekstremami */}
+                        {/* ZMIANA 1: Etykiety Min/Max siedzą dokładnie nad odpowiednimi słupkami, a nie pod sufitem */}
                         {(isAbsoluteMin || isAbsoluteMax) && (
-                          <span className={`absolute bottom-[calc(100%+5px)] text-[9px] sm:text-[10px] font-bold ${isAbsoluteMin ? 'text-emerald-500' : 'text-red-500'}`}>
+                          <span 
+                            className={`absolute text-[9px] sm:text-[10px] font-bold ${isAbsoluteMin ? 'text-emerald-500' : 'text-red-500'}`}
+                            style={{ bottom: `${barHeight + 4}px` }}
+                          >
                             {item.price.toFixed(2)}
                           </span>
                         )}
