@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Line,
   XAxis,
@@ -12,7 +13,7 @@ import {
   Legend
 } from 'recharts';
 
-export default function Chart({ data, g11Rate }: { data: any, g11Rate?: number }) {
+export default function Chart({ data }: { data: any[] }) {
   if (!data || data.length === 0) return <p style={{ color: '#64748b' }}>Brak danych do wyświetlenia.</p>;
 
   return (
@@ -27,7 +28,7 @@ export default function Chart({ data, g11Rate }: { data: any, g11Rate?: number }
             contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
           />
           <Legend verticalAlign="top" align="right" height={40} iconType="circle" />
-          <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="left" dataKey="kwh" name="Zużycie (kWh)" fill="#60a5fa" radius={[4, 4, 0, 0]} opacity={0.85} />
           <Line yAxisId="right" type="monotone" dataKey="price" name="Cena RCE (Giełda)" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
           <Line yAxisId="right" type="step" dataKey="g11Price" name="Twoja Stawka G11" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
         </ComposedChart>
