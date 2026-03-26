@@ -138,6 +138,7 @@ export default async function Home({ searchParams }) {
 
   // 3. Pobieranie Danych z Giełdy RCE (PSE API) dla Radaru i API
   let todayForecast = null;
+  let tomorrowForecast = null;
   let forecastError = null;
   
   if (activeTab === 'radar' || activeTab === 'api') {
@@ -145,30 +146,18 @@ export default async function Home({ searchParams }) {
       const polandTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
       const todayStr = `${polandTime.getFullYear()}-${String(polandTime.getMonth() + 1).padStart(2, '0')}-${String(polandTime.getDate()).padStart(2, '0')}`;
       
-      // --- ZMIANA: Sprawdzamy czy są już dostępne ceny na JUTRO ---
       const tomorrowTime = new Date(polandTime);
       tomorrowTime.setDate(tomorrowTime.getDate() + 1);
       const tomorrowStr = `${tomorrowTime.getFullYear()}-${String(tomorrowTime.getMonth() + 1).padStart(2, '0')}-${String(tomorrowTime.getDate()).padStart(2, '0')}`;
 
-      let targetDateStr = tomorrowStr;
-      let dateLabel = "Jutro";
+      // Funkcja pomocnicza do pobierania i przeliczania danego dnia
+      const fetchPseData = async (targetDateStr: string, dateLabel: string) => {
+        const params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
+        const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
+        const json = pseRes.ok ? await pseRes.json() : { value: [] };
 
-      let params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
-      let pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
-      let json = pseRes.ok ? await pseRes.json() : { value: [] };
-
-      if (!json.value || json.value.length === 0) {
-        // Brak danych na jutro, pobieramy dzisiejsze
-        targetDateStr = todayStr;
-        dateLabel = "Dzisiaj";
-        params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
-        pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
-        json = pseRes.ok ? await pseRes.json() : { value: [] };
-      }
-
-      if (json.value?.length > 0) {
-        // KROK 1: Bezpieczne parsowanie godzin (odporne na zmiany nazw kolumn w PSE)
-          let pArr = json.value.map(r => {
+        if (json.value?.length > 0) {
+          let pArr = json.value.map((r: any) => {
             let hour = '??:??';
             const timeStr = String(r.dtime || r.udtczas || r.udtczas_oreb || r.data_czas || '');
             const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
@@ -190,7 +179,6 @@ export default async function Home({ searchParams }) {
             return { time: hour, price: r.rce_pln / 1000 };
           });
 
-          // KROK 2: Dynamiczne obliczanie okien (najtańsze vs najdroższe 3H)
           const isQuarterHourly = pArr.length > 30;
           const elementsIn3Hours = isQuarterHourly ? 12 : 3;
 
@@ -202,7 +190,6 @@ export default async function Home({ searchParams }) {
             for (let j = 0; j < elementsIn3Hours; j++) sum += pArr[i + j].price;
             const avg = sum / elementsIn3Hours;
 
-            // Logika dla najtańszego okna
             if (avg < bestWindowAvgPrice) {
               bestWindowAvgPrice = avg;
               bestWindowStart = pArr[i].time;
@@ -213,7 +200,6 @@ export default async function Home({ searchParams }) {
               bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
             }
 
-            // Logika dla najdroższego okna
             if (avg > worstWindowAvgPrice) {
               worstWindowAvgPrice = avg;
               worstWindowStart = pArr[i].time;
@@ -225,16 +211,30 @@ export default async function Home({ searchParams }) {
             }
           }
 
-        todayForecast = { 
-          prices: pArr, 
-          date: targetDateStr, 
-          dateLabel: dateLabel,
-          absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), 
-          absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), 
-          bestWindowStart, bestWindowEnd, bestWindowAvgPrice, 
-          worstWindowStart, worstWindowEnd, worstWindowAvgPrice 
-        };
-      } else forecastError = "PSE jeszcze nie opublikowało cen na dziś/jutro.";
+          return { 
+            prices: pArr, date: targetDateStr, dateLabel,
+            absoluteMinPrice: Math.min(...pArr.map(p=>p.price)), 
+            absoluteMaxPrice: Math.max(...pArr.map(p=>p.price)), 
+            bestWindowStart, bestWindowEnd, bestWindowAvgPrice, 
+            worstWindowStart, worstWindowEnd, worstWindowAvgPrice 
+          };
+        }
+        return null;
+      };
+
+      // Pobieramy równolegle dzisiaj i jutro
+      const [todayData, tomorrowData] = await Promise.all([
+        fetchPseData(todayStr, "Dzisiaj"),
+        fetchPseData(tomorrowStr, "Jutro")
+      ]);
+
+      todayForecast = todayData;
+      tomorrowForecast = tomorrowData;
+
+      if (!todayForecast && !tomorrowForecast) {
+        forecastError = "PSE jeszcze nie opublikowało cen na dziś ani na jutro.";
+      }
+
     } catch (e) { forecastError = "Błąd połączenia z PSE."; }
   }
 
@@ -289,7 +289,7 @@ export default async function Home({ searchParams }) {
         {/* Dynamiczne Renderowanie Komponentów Zakładek */}
         <div className="animate-fade-in-up">
           {activeTab === 'radar' && (
-            <TabRadar isPremiumUser={isPremiumUser} todayForecast={todayForecast} forecastError={forecastError} />
+            <TabRadar isPremiumUser={isPremiumUser} todayForecast={todayForecast} tomorrowForecast={tomorrowForecast} forecastError={forecastError} />
           )}
           {activeTab === 'history' && (
             <TabHistory days={days} chartData={chartData} dataRange={dataRange} />
