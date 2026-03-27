@@ -222,7 +222,6 @@ export default async function Home({ searchParams }) {
         return null;
       };
 
-      // Pobieramy równolegle dzisiaj i jutro
       const [todayData, tomorrowData] = await Promise.all([
         fetchPseData(todayStr, "Dzisiaj"),
         fetchPseData(tomorrowStr, "Jutro")
@@ -245,11 +244,12 @@ export default async function Home({ searchParams }) {
     <div className="min-h-screen w-full bg-slate-50 font-sans text-slate-900 pb-20">
       <style dangerouslySetInnerHTML={{__html: globalStyles}} />
       
-      {/* Topbar */}
+      {/* UJEDNOLICONY TOPBAR - Gradientowe Logo */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-2 font-black text-xl text-slate-800">
-            <IconZap /> EnergyOptimizer
+          <div className="flex items-center gap-2 font-black text-xl tracking-tight">
+            <IconZap />
+            <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">EnergyOptimizer</span>
           </div>
           <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-full">
             {isPremiumUser && (
@@ -281,7 +281,6 @@ export default async function Home({ searchParams }) {
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
               }`}
             >
-              {/* Pełna nazwa dla komputerów (md:inline), skrócona nazwa dla telefonów (md:hidden) */}
               <span className="hidden md:inline">{tab.label}</span>
               <span className="md:hidden">{tab.short}</span>
             </Link>

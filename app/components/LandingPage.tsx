@@ -8,15 +8,20 @@ const IconZap = () => (
 export default function LandingPage() {
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
-      <header style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ fontSize: '1.4rem', fontWeight: '900', background: 'linear-gradient(to right, #059669, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <IconZap /> Energy Optimizer
+      
+      {/* UJEDNOLICONY TOPBAR - Identyczny jak w aplikacji */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+          <div className="flex items-center gap-2 font-black text-xl tracking-tight">
+            <IconZap />
+            <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">EnergyOptimizer</span>
+          </div>
+          <SignInButton mode="modal">
+            <button className="px-5 py-2 bg-white text-slate-900 border border-slate-200 rounded-full font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+              Zaloguj się
+            </button>
+          </SignInButton>
         </div>
-        <SignInButton mode="modal">
-          <button style={{ padding: '8px 20px', backgroundColor: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>
-            Zaloguj się
-          </button>
-        </SignInButton>
       </header>
 
       <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#334155' }}>
@@ -125,7 +130,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* FEATURES GRID - ZAKTUALIZOWANA */}
+        {/* FEATURES GRID */}
         <div style={{ backgroundColor: '#ffffff', padding: '5rem 1.5rem', borderTop: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '4rem', color: '#0f172a', fontWeight: 'bold' }}>Co znajdziesz w środku?</h2>
