@@ -7,9 +7,9 @@ const IconZap = () => (
 
 export default function LandingPage() {
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', width: '100%', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
-      {/* UJEDNOLICONY TOPBAR - Identyczny jak w aplikacji */}
+      {/* UJEDNOLICONY TOPBAR */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
           <div className="flex items-center gap-2 font-black text-xl tracking-tight">
@@ -24,7 +24,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#334155' }}>
+      <main style={{ padding: '0', fontFamily: 'system-ui, sans-serif', color: '#334155', flex: '1 0 auto' }}>
         {/* HERO SECTION */}
         <div style={{ padding: '4rem 1.5rem 6rem', textAlign: 'center', maxWidth: '900px', margin: '0 auto', boxSizing: 'border-box' }}>
           <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '2rem', border: '1px solid #bfdbfe' }}>
@@ -159,6 +159,20 @@ export default function LandingPage() {
           </div>
         </div>
       </main>
+
+      {/* FOOTER W STRONIE LĄDOWANIA */}
+      <footer style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '2rem 1.5rem', marginTop: 'auto' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            © {new Date().getFullYear()} EnergyOptimizer. Wszelkie prawa zastrzeżone.
+          </div>
+          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem', fontWeight: '500' }}>
+            <a href="/regulamin" style={{ color: '#475569', textDecoration: 'none' }}>Regulamin</a>
+            <a href="/polityka" style={{ color: '#475569', textDecoration: 'none' }}>Polityka Prywatności</a>
+            <a href="mailto:kontakt@energyoptimizer.pl" style={{ color: '#475569', textDecoration: 'none' }}>Kontakt</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

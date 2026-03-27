@@ -303,6 +303,16 @@ export default async function Home({ searchParams }) {
           )}
         </div>
       </main>
+      <footer className="mt-20 border-t border-slate-200 py-8 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+          <div>© {new Date().getFullYear()} EnergyOptimizer.</div>
+          <div className="flex gap-6 font-medium">
+            <a href="/regulamin" className="hover:text-emerald-600 transition-colors">Regulamin</a>
+            <a href="/polityka" className="hover:text-emerald-600 transition-colors">Polityka Prywatności</a>
+            <a href="mailto:kontakt@energyoptimizer.pl" className="hover:text-emerald-600 transition-colors">Kontakt</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
