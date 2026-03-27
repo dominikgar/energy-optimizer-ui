@@ -265,23 +265,25 @@ export default async function Home({ searchParams }) {
       <main className="max-w-7xl mx-auto px-6 pt-10">
         
         {/* Nawigacja Zakładek */}
-        <nav className="flex gap-2 p-1.5 bg-slate-200/50 backdrop-blur-sm rounded-2xl border border-slate-200 mb-10 overflow-x-auto">
+        <nav className="grid grid-cols-2 md:flex md:flex-row gap-2 p-1.5 bg-slate-200/50 backdrop-blur-sm rounded-2xl border border-slate-200 mb-10">
           {[
-            { id: 'radar', label: 'Radar na dziś 🟢' },
-            { id: 'history', label: 'Profil Historyczny' },
-            { id: 'advisor', label: 'Doradca Taryfowy' },
-            { id: 'api', label: 'API Automatyzacji 🔌' }
+            { id: 'radar', label: 'Radar na dziś 🟢', short: 'Radar 🟢' },
+            { id: 'history', label: 'Profil Historyczny', short: 'Historia' },
+            { id: 'advisor', label: 'Doradca Taryfowy', short: 'Doradca' },
+            { id: 'api', label: 'API Automatyzacji 🔌', short: 'API 🔌' }
           ].map(tab => (
             <Link 
               key={tab.id} 
               href={`/?tab=${tab.id}&days=${days}&provider=${selectedProvider}`}
-              className={`px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
+              className={`flex items-center justify-center px-2 py-3 md:px-6 md:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all ${
                 activeTab === tab.id 
                   ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' 
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
               }`}
             >
-              {tab.label}
+              {/* Pełna nazwa dla komputerów (md:inline), skrócona nazwa dla telefonów (md:hidden) */}
+              <span className="hidden md:inline">{tab.label}</span>
+              <span className="md:hidden">{tab.short}</span>
             </Link>
           ))}
         </nav>
