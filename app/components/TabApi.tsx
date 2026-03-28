@@ -24,7 +24,7 @@ export default function TabApi({ userApiKey, todayForecast }: TabApiProps) {
             <p className="text-slate-500 text-sm mb-4">Wklej ten kod do pliku <code>configuration.yaml</code>, aby utworzyć pełen zestaw sensorów predykcyjnych dla pompy ciepła.</p>
             <pre className="bg-slate-900 text-emerald-400 p-6 rounded-2xl text-sm font-mono overflow-x-auto shadow-inner leading-relaxed">
 {`rest:
-  - resource: "https://twoja-domena.pl/api/v1/forecast/best-window"
+  - resource: "https://www.energyoptimizer.pl/api/v1/forecast/best-window"
     headers:
       Authorization: "Bearer ${userApiKey || 'TWÓJ_KLUCZ'}"
     scan_interval: 3600 # Odświeżaj co godzinę
