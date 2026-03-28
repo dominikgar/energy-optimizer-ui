@@ -40,14 +40,15 @@ export async function POST(req: Request) {
         },
       ],
       metadata: {
-        userId: userId, // BARDZO WAŻNE: Podpinamy ID z Clerka, aby webhook wiedział, kto zapłacił
+        userId: userId, // VEĽMI DÔLEŽITÉ: Pripájame ID z Clerku, aby webhook vedel, kto zaplatil
       },
-      mode: 'subscription', // Tryb subskrypcji
+      mode: 'subscription', // Režim predplatného
+      allow_promotion_codes: true, // <-- TOTO UMOŽŇUJE KUPÓNY (ZĽAVOVÉ KÓDY)
       success_url: `${baseUrl}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?canceled=true`,
     });
 
-    // 4. Przekierowujemy użytkownika na bezpieczną stronę Stripe
+    // 4. Presmerujeme používateľa na bezpečnú stránku Stripe
     if (session.url) {
       return NextResponse.redirect(session.url, 303);
     } else {
