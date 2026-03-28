@@ -1,11 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Dodajemy /polityka i /regulamin do ścieżek publicznych
+// Dodajemy /polityka i /regulamin oraz ścieżki API do ścieżek publicznych
 const isPublicRoute = createRouteMatcher([
   '/', 
   '/polityka',
   '/regulamin',
-  '/api/webhook/stripe(.*)' 
+  '/api/webhook/stripe(.*)',
+  '/api/v1/(.*)' // <-- DODANE: Przepuszczamy zapytania API (np. dla Home Assistanta)
 ]);
 
 export default clerkMiddleware((auth, request) => {
