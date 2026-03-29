@@ -3,6 +3,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 // Dodajemy /polityka i /regulamin oraz ścieżki API do ścieżek publicznych
 const isPublicRoute = createRouteMatcher([
   '/', 
+  '/faq',
   '/polityka',
   '/regulamin',
   '/api/webhook/stripe(.*)',
