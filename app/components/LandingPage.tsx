@@ -1,5 +1,6 @@
 import React from 'react';
 import { SignInButton } from '@clerk/nextjs';
+import Footer from './Footer';
 
 const IconZap = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 fill-emerald-500"><path d="M4 14.71 13.5 3l-1.33 8.29H20l-9.5 11.71 1.33-8.29H4z"/></svg>
@@ -160,19 +161,8 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* FOOTER W STRONIE LĄDOWANIA */}
-      <footer style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '2rem 1.5rem', marginTop: 'auto' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
-            © {new Date().getFullYear()} EnergyOptimizer. Wszelkie prawa zastrzeżone.
-          </div>
-          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem', fontWeight: '500' }}>
-            <a href="/regulamin" style={{ color: '#475569', textDecoration: 'none' }}>Regulamin</a>
-            <a href="/polityka" style={{ color: '#475569', textDecoration: 'none' }}>Polityka Prywatności</a>
-            <a href="mailto:kontakt@energyoptimizer.pl" style={{ color: '#475569', textDecoration: 'none' }}>Kontakt</a>
-          </div>
-        </div>
-      </footer>
+      {/* FOOTER (TERAZ Z JEDNEGO WSPÓLNEGO ŹRÓDŁA) */}
+      <Footer />
     </div>
   );
 }

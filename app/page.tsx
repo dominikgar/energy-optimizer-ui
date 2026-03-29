@@ -13,6 +13,7 @@ import TabRadar from './components/TabRadar';
 import TabHistory from './components/TabHistory';
 import TabAdvisor from './components/TabAdvisor';
 import TabApi from './components/TabApi';
+import Footer from './components/Footer';
 
 // --- KONFIGURACJA BAZY DANYCH ---
 const pool = new Pool({
@@ -151,13 +152,13 @@ export default async function Home({ searchParams }) {
       const tomorrowStr = `${tomorrowTime.getFullYear()}-${String(tomorrowTime.getMonth() + 1).padStart(2, '0')}-${String(tomorrowTime.getDate()).padStart(2, '0')}`;
 
       // Funkcja pomocnicza do pobierania i przeliczania danego dnia
-      const fetchPseData = async (targetDateStr: string, dateLabel: string) => {
+      const fetchPseData = async (targetDateStr, dateLabel) => {
         const params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
         const pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
         const json = pseRes.ok ? await pseRes.json() : { value: [] };
 
         if (json.value?.length > 0) {
-          let pArr = json.value.map((r: any) => {
+          let pArr = json.value.map((r) => {
             let hour = '??:??';
             const timeStr = String(r.dtime || r.udtczas || r.udtczas_oreb || r.data_czas || '');
             const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
@@ -303,17 +304,9 @@ export default async function Home({ searchParams }) {
           )}
         </div>
       </main>
-      <footer className="mt-20 border-t border-slate-200 py-8 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
-          <div>© {new Date().getFullYear()} EnergyOptimizer.</div>
-          <div className="flex gap-6 font-medium">
-            <a href="/faq" className="hover:text-emerald-600 transition-colors">FAQ</a>
-            <a href="/regulamin" className="hover:text-emerald-600 transition-colors">Regulamin</a>
-            <a href="/polityka" className="hover:text-emerald-600 transition-colors">Polityka Prywatności</a>
-            <a href="mailto:kontakt@energyoptimizer.pl" className="hover:text-emerald-600 transition-colors">Kontakt</a>
-          </div>
-        </div>
-      </footer>
+
+      {/* WSPÓŁDZIELONY FOOTER DLA ZALOGOWANYCH UŻYTKOWNIKÓW */}
+      <Footer />
     </div>
   );
 }
