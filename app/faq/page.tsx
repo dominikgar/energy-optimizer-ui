@@ -83,26 +83,3 @@ export default function FaqPage() {
     </div>
   );
 }
-```
-
-### Co z Regulaminem i Polityką Prywatności?
-
-Aby uzyskać ten sam perfekcyjny efekt na pozostałych stronach (`app/polityka/page.tsx` oraz `app/regulamin/page.tsx`), wystarczy, że upewnisz się, że główny `return` tych plików ma podobną, "kanapkową" strukturę.
-
-Zaimportuj na górze tych plików:
-`import Navbar from '../components/Navbar';`
-`import Footer from '../components/Footer';`
-
-A następnie zaktualizuj ich widok (struktura HTML):
-```tsx
-return (
-  <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
-    <Navbar />
-    
-    <main className="flex-grow max-w-4xl mx-auto w-full py-16 px-6">
-      {/* Tutaj cały tekst polityki/regulaminu */}
-    </main>
-
-    <Footer />
-  </div>
-);
