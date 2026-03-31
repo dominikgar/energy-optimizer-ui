@@ -1,17 +1,21 @@
 import React from 'react';
 import Link from 'next/link';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 py-12 px-6">
-      <div className="max-w-3xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-slate-200">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+      <Navbar />
+      
+      <main className="flex-grow max-w-4xl mx-auto w-full py-16 px-6">
         <Link href="/" className="text-emerald-600 font-bold hover:underline mb-8 inline-block">
           &larr; Powrót na stronę główną
         </Link>
         <h1 className="text-3xl font-black mb-6">Polityka Prywatności</h1>
         <p className="text-sm text-slate-500 mb-8">Ostatnia aktualizacja: {new Date().toLocaleDateString('pl-PL')}</p>
 
-        <div className="space-y-6 text-slate-600 leading-relaxed">
+        <div className="space-y-6 text-slate-600 leading-relaxed bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-slate-200">
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-2">1. Postanowienia ogólne</h2>
             <p>Niniejsza Polityka Prywatności określa zasady przetwarzania i ochrony danych osobowych przekazanych przez Użytkowników w związku z korzystaniem z serwisu <strong>energyoptimizer.pl</strong>.</p>
@@ -42,7 +46,9 @@ export default function PrivacyPolicy() {
             <p>Dane Użytkowników nie są sprzedawane. Korzystamy z zaufanych podwykonawców niezbędnych do działania usługi (np. serwery Vercel, system autoryzacji Clerk, system płatności Stripe).</p>
           </section>
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

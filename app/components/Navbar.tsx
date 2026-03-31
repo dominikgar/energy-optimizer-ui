@@ -1,8 +1,15 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
 import { UserButton, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
+// @ts-ignore
+import { Pool } from 'pg';
+
+// Inicjalizacja połączenia z bazą danych
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 const IconZap = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 fill-emerald-500">
@@ -10,7 +17,22 @@ const IconZap = () => (
   </svg>
 );
 
-export default function Navbar() {
+export default async function Navbar() {
+  const { userId } = auth();
+  let isPremiumUser = false;
+
+  // Jeśli użytkownik jest zalogowany, sprawdzamy jego status PRO w bazie
+  if (userId) {
+    try {
+      const sub = await pool.query('SELECT is_active FROM user_subscriptions WHERE user_id = $1', [userId]);
+      if (sub.rows.length > 0 && sub.rows[0].is_active) {
+        isPremiumUser = true;
+      }
+    } catch (e) {
+      console.error("Błąd pobierania statusu PRO w Navbarze:", e);
+    }
+  }
+
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full">
       <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
@@ -20,6 +42,12 @@ export default function Navbar() {
         </Link>
         <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-full">
           <SignedIn>
+            {/* Plakietka PRO pojawia się tylko dla aktywnych subskrybentów */}
+            {isPremiumUser && (
+              <a href="/api/customer_portal" className="text-xs font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full hover:bg-emerald-200 transition-colors">
+                PRO ACTIVE ⚙️
+              </a>
+            )}
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           <SignedOut>
