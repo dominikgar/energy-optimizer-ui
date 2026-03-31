@@ -1,5 +1,6 @@
 import React from 'react';
-import Link from 'next/link';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 export const metadata = {
   title: 'FAQ - Często Zadawane Pytania | EnergyOptimizer',
@@ -13,16 +14,20 @@ export default function FaqPage() {
       answer: "Nie. Dlatego stworzyliśmy nasz darmowy kalkulator. Jeśli zużywasz prąd głównie wieczorami (np. w szczycie między 19:00 a 21:00) i nie masz jak tego zmienić, taryfa dynamiczna może podnieść Twoje rachunki. Jeśli jednak masz pompę ciepła, bojler lub samochód elektryczny i możesz uruchamiać je w ciągu dnia (gdy prąd z giełdy jest najtańszy), oszczędności mogą sięgać nawet 30-40%."
     },
     {
+      question: "Skąd w kalkulatorze biorą się ceny prądu dla taryfy G11 (Tauron, PGE, Enea)?",
+      answer: "Ceny stałe (np. 1.15 zł/kWh) widoczne w Doradcy Taryfowym to szacunkowe stawki brutto. Zawierają one uśrednioną cenę samej energii czynnej, opłaty dystrybucyjne zmienne oraz podatek VAT (23%), bazując na oficjalnych taryfach zatwierdzonych przez prezesa URE. Ponieważ na ostateczny rachunek wpływają również stałe opłaty abonamentowe (niezależne od zużycia), traktuj te wartości jako doskonały punkt odniesienia do wyliczenia różnic i opłacalności zmiany taryfy, a nie jako dokładną wycenę całego rachunku co do grosza."
+    },
+    {
       question: "Mam zwykłą taryfę G11. Czy wasze API obniży mój rachunek?",
       answer: "Nie. W taryfie G11 płacisz stałą stawkę za prąd przez całą dobę. Przesuwanie zużycia na tańsze godziny giełdowe nic nie zmieni na Twoim rachunku. Nasze API automatyzacji (wersja PRO) jest przeznaczone dla osób, które podpisały ze swoim dostawcą aneks na tzw. Taryfę Dynamiczną, w której cena prądu zmienia się co godzinę."
     },
     {
-      question: "Skąd bierzecie ceny prądu i czy to te same ceny, które zapłacę?",
+      question: "Skąd bierzecie ceny prądu do automatyzacji pomp ciepła?",
       answer: "Pobieramy oficjalne, darmowe dane o Rynkowej Cenie Energii (RCE) z Polskich Sieci Elektroenergetycznych (PSE). Taryfy dynamiczne u sprzedawców opierają się na bliźniaczym wskaźniku RDN z Towarowej Giełdy Energii. Chociaż wykresy RCE idealnie pokrywają się z dołkami i górkami na giełdzie (co pozwala bezbłędnie namierzyć najtańsze okna do grzania w Home Assistant), pamiętaj, że do nagiej ceny giełdowej Twój dostawca doliczy opłaty dystrybucyjne, marżę i podatek VAT."
     },
     {
       question: "Jak działa integracja z Home Assistant?",
-      answer: "Po wykupieniu dostępu PRO otrzymujesz unikalny klucz API. Wystarczy skopiować kilka linijek kodu z Twojego panelu do pliku configuration.yaml w Home Assistant. Twoja centrala zacznie automatycznie pobierać informacje o aktualnych cenach oraz najtańszych blokach godzinowych na dziś i na jutro. Możesz użyć tych danych (jako encji) do tworzenia własnych automatyzacji, np.: 'Jeśli obecna godzina mieści się w najtańszym oknie, włącz pompę ciepła na 100%'."
+      answer: "Po wykupieniu dostępu PRO otrzymujesz unikalny klucz API. Wystarczy skopiować kilka linijek kodu z Twojego panelu do pliku configuration.yaml w Home Assistant. Twoja centrala zacznie automatycznie pobierać informacje o aktualnych cenach oraz najtańszych blokach godzinowych na dziś i na jutro. Możesz użyć tych danych (jako encji) do tworzenia własnych automatyzacji."
     },
     {
       question: "Z jakich dostawców mogę wgrać plik CSV do audytu?",
@@ -35,12 +40,11 @@ export default function FaqPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-16 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+      <Navbar />
+      
+      <main className="flex-grow max-w-3xl mx-auto w-full py-16 px-4">
         <div className="mb-12 text-center">
-          <Link href="/" className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors mb-6 inline-block">
-            &larr; Powrót na stronę główną
-          </Link>
           <h1 className="text-4xl font-black text-slate-900 mb-4">Często Zadawane Pytania</h1>
           <p className="text-slate-600">Rozwiewamy wątpliwości na temat taryf dynamicznych i naszej aplikacji.</p>
         </div>
@@ -73,7 +77,32 @@ export default function FaqPage() {
             Napisz wiadomość
           </a>
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }
+```
+
+### Co z Regulaminem i Polityką Prywatności?
+
+Aby uzyskać ten sam perfekcyjny efekt na pozostałych stronach (`app/polityka/page.tsx` oraz `app/regulamin/page.tsx`), wystarczy, że upewnisz się, że główny `return` tych plików ma podobną, "kanapkową" strukturę.
+
+Zaimportuj na górze tych plików:
+`import Navbar from '../components/Navbar';`
+`import Footer from '../components/Footer';`
+
+A następnie zaktualizuj ich widok (struktura HTML):
+```tsx
+return (
+  <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+    <Navbar />
+    
+    <main className="flex-grow max-w-4xl mx-auto w-full py-16 px-6">
+      {/* Tutaj cały tekst polityki/regulaminu */}
+    </main>
+
+    <Footer />
+  </div>
+);
