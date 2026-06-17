@@ -2,6 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { scheduleDevice } from '../../lib/deviceScheduler';
+import {
+  calculateBatteryChargeModel,
+  calculateHeatPumpModel
+} from '../../lib/deviceModels';
 
 interface PlannerForecast {
   date: string;
@@ -17,7 +21,7 @@ interface TabPlannerProps {
   forecastError: string | null;
 }
 
-type DevicePreset = 'boiler' | 'ev' | 'dishwasher' | 'custom';
+type DevicePreset = 'boiler' | 'ev' | 'dishwasher' | 'heatPump' | 'battery' | 'custom';
 
 const PRESETS: Record<DevicePreset, {
   label: string;
@@ -28,6 +32,8 @@ const PRESETS: Record<DevicePreset, {
   boiler: { label: 'Bojler', energy: 6, power: 2, contiguous: true },
   ev: { label: 'Samochód elektryczny', energy: 20, power: 7.4, contiguous: false },
   dishwasher: { label: 'Zmywarka / pralka', energy: 1.5, power: 1, contiguous: true },
+  heatPump: { label: 'Pompa ciepła', energy: 6, power: 3, contiguous: true },
+  battery: { label: 'Magazyn energii', energy: 6, power: 5, contiguous: false },
   custom: { label: 'Urządzenie własne', energy: 5, power: 2, contiguous: true }
 };
 
@@ -54,12 +60,45 @@ function formatDateLabel(date: string | null): string {
 
 function buildTimeOptions(intervalMinutes: number, includeEnd: boolean): string[] {
   const options: string[] = [];
-  const start = includeEnd ? 0 : 0;
   const end = includeEnd ? 1440 : 1440 - intervalMinutes;
-  for (let minute = start; minute <= end; minute += intervalMinutes) {
+  for (let minute = 0; minute <= end; minute += intervalMinutes) {
     options.push(formatTime(minute));
   }
   return options;
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 0.1,
+  hint
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  hint?: string;
+}) {
+  return (
+    <label className="text-sm font-bold text-slate-700">
+      {label}
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal"
+      />
+      {hint && <span className="mt-1 block text-xs font-normal text-slate-400">{hint}</span>}
+    </label>
+  );
 }
 
 function LockedPlanner() {
@@ -68,7 +107,7 @@ function LockedPlanner() {
       <div className="text-5xl mb-5">⚡</div>
       <h2 className="text-3xl font-black mb-3">Planer urządzeń</h2>
       <p className="text-slate-500 max-w-xl mx-auto mb-8 leading-relaxed">
-        Planer wyznacza najtańsze interwały pracy dla bojlera, ładowania EV lub innego odbiornika z uwzględnieniem wymaganej energii, mocy i terminu zakończenia.
+        Planer wyznacza najtańsze interwały pracy dla bojlera, EV, pompy ciepła, magazynu energii lub innego odbiornika.
       </p>
       <form action="/api/checkout_sessions" method="POST">
         <button type="submit" className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-full shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 transition-colors">
@@ -91,6 +130,18 @@ function PlannerContent({
   const [contiguous, setContiguous] = useState(PRESETS.boiler.contiguous);
   const [earliestStart, setEarliestStart] = useState('00:00');
   const [latestEnd, setLatestEnd] = useState('24:00');
+
+  const [thermalDemand, setThermalDemand] = useState(18);
+  const [cop, setCop] = useState(3.2);
+  const [heatPumpPower, setHeatPumpPower] = useState(3);
+  const [heatReserve, setHeatReserve] = useState(10);
+
+  const [batteryCapacity, setBatteryCapacity] = useState(10);
+  const [batteryCurrentSoc, setBatteryCurrentSoc] = useState(20);
+  const [batteryTargetSoc, setBatteryTargetSoc] = useState(80);
+  const [batteryPower, setBatteryPower] = useState(5);
+  const [batteryEfficiency, setBatteryEfficiency] = useState(92);
+
   const [dayAfterTomorrowForecast, setDayAfterTomorrowForecast] = useState<PlannerForecast | null>(null);
   const [futureForecastLoading, setFutureForecastLoading] = useState(false);
   const [futureForecastError, setFutureForecastError] = useState<string | null>(null);
@@ -102,6 +153,35 @@ function PlannerContent({
   const intervalMinutes = activeForecast?.intervalMinutes || 60;
   const earliestOptions = buildTimeOptions(intervalMinutes, false);
   const latestOptions = buildTimeOptions(intervalMinutes, true);
+
+  const model = useMemo(() => {
+    if (preset === 'heatPump') {
+      return calculateHeatPumpModel({
+        thermalDemandKwh: thermalDemand,
+        cop,
+        maxElectricalPowerKw: heatPumpPower,
+        reservePercent: heatReserve
+      });
+    }
+
+    if (preset === 'battery') {
+      return calculateBatteryChargeModel({
+        usableCapacityKwh: batteryCapacity,
+        currentSocPercent: batteryCurrentSoc,
+        targetSocPercent: batteryTargetSoc,
+        maxChargePowerKw: batteryPower,
+        chargeEfficiencyPercent: batteryEfficiency
+      });
+    }
+
+    return {
+      valid: energy > 0 && power > 0,
+      error: energy <= 0 || power <= 0 ? 'Energia i moc muszą być większe od zera.' : null,
+      energyRequiredKwh: energy,
+      maxPowerKw: power,
+      details: {}
+    };
+  }, [batteryCapacity, batteryCurrentSoc, batteryEfficiency, batteryPower, batteryTargetSoc, cop, energy, heatPumpPower, heatReserve, power, preset, thermalDemand]);
 
   useEffect(() => {
     if (day !== 'tomorrow' || !overnight || dayAfterTomorrowForecast || requestedFutureForecast.current) return;
@@ -124,7 +204,7 @@ function PlannerContent({
   const missingNextDayData = overnight && !nextForecast;
 
   const result = useMemo(() => {
-    if (!activeForecast || missingNextDayData) return null;
+    if (!activeForecast || missingNextDayData || !model.valid) return null;
 
     const intervals = activeForecast.prices.map((item) => ({
       start: item.time,
@@ -145,13 +225,13 @@ function PlannerContent({
     }
 
     return scheduleDevice(intervals, {
-      energyRequiredKwh: energy,
-      maxPowerKw: power,
+      energyRequiredKwh: model.energyRequiredKwh,
+      maxPowerKw: model.maxPowerKw,
       earliestStart,
       latestEnd,
       requireContiguous: contiguous
     });
-  }, [activeForecast, contiguous, earliestStart, energy, latestEnd, missingNextDayData, nextForecast, overnight, power]);
+  }, [activeForecast, contiguous, earliestStart, latestEnd, missingNextDayData, model, nextForecast, overnight]);
 
   const selectPreset = (value: DevicePreset) => {
     const selected = PRESETS[value];
@@ -173,7 +253,7 @@ function PlannerContent({
         <div>
           <h2 className="text-3xl font-black">Planer urządzeń</h2>
           <p className="text-slate-500 mt-2 text-sm leading-6 max-w-3xl">
-            Podaj energię i ograniczenia urządzenia. Godzina zakończenia wcześniejsza od startu oznacza kolejny dzień, np. 22:00–06:00.
+            Wybierz model urządzenia i jego ograniczenia. Godzina zakończenia wcześniejsza od startu oznacza kolejny dzień, np. 22:00–06:00.
           </p>
         </div>
         <div className="flex bg-slate-200/50 p-1 rounded-xl">
@@ -206,15 +286,58 @@ function PlannerContent({
               ))}
             </div>
 
+            {preset === 'heatPump' && (
+              <div className="mb-7 rounded-2xl border border-orange-200 bg-orange-50 p-5">
+                <h3 className="font-black text-orange-950 mb-4">Model pompy ciepła</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <NumberField label="Zapotrzebowanie cieplne [kWh]" value={thermalDemand} onChange={setThermalDemand} min={0.1} max={500} />
+                  <NumberField label="COP" value={cop} onChange={setCop} min={1} max={10} step={0.1} hint="Stała wartość dla analizowanego okresu." />
+                  <NumberField label="Maks. moc elektryczna [kW]" value={heatPumpPower} onChange={setHeatPumpPower} min={0.1} max={50} />
+                  <NumberField label="Rezerwa cieplna [%]" value={heatReserve} onChange={setHeatReserve} min={0} max={100} step={1} />
+                </div>
+                <p className="mt-4 text-sm text-orange-900">Model zakłada stały COP i nie uwzględnia jeszcze temperatury zewnętrznej ani bezwładności budynku.</p>
+              </div>
+            )}
+
+            {preset === 'battery' && (
+              <div className="mb-7 rounded-2xl border border-violet-200 bg-violet-50 p-5">
+                <h3 className="font-black text-violet-950 mb-4">Model ładowania magazynu</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <NumberField label="Pojemność użyteczna [kWh]" value={batteryCapacity} onChange={setBatteryCapacity} min={0.1} max={500} />
+                  <NumberField label="Aktualny SoC [%]" value={batteryCurrentSoc} onChange={setBatteryCurrentSoc} min={0} max={100} step={1} />
+                  <NumberField label="Docelowy SoC [%]" value={batteryTargetSoc} onChange={setBatteryTargetSoc} min={0} max={100} step={1} />
+                  <NumberField label="Maks. moc ładowania [kW]" value={batteryPower} onChange={setBatteryPower} min={0.1} max={100} />
+                  <NumberField label="Sprawność ładowania [%]" value={batteryEfficiency} onChange={setBatteryEfficiency} min={1} max={100} step={1} />
+                </div>
+                <p className="mt-4 text-sm text-violet-900">Model planuje ładowanie z sieci. Nie obejmuje jeszcze rozładowania, autokonsumpcji PV ani arbitrażu sprzedaży.</p>
+              </div>
+            )}
+
+            {!model.valid && (
+              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                {model.error}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <label className="text-sm font-bold text-slate-700">
-                Wymagana energia [kWh]
-                <input type="number" min="0.1" max="500" step="0.1" value={energy} onChange={(event) => setEnergy(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-              </label>
-              <label className="text-sm font-bold text-slate-700">
-                Maksymalna moc [kW]
-                <input type="number" min="0.1" max="100" step="0.1" value={power} onChange={(event) => setPower(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-              </label>
+              {preset !== 'heatPump' && preset !== 'battery' ? (
+                <>
+                  <NumberField label="Wymagana energia [kWh]" value={energy} onChange={setEnergy} min={0.1} max={500} />
+                  <NumberField label="Maksymalna moc [kW]" value={power} onChange={setPower} min={0.1} max={100} />
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+                    <span className="text-sm font-bold text-slate-700 block">Energia pobrana z sieci</span>
+                    <strong className="text-2xl text-slate-900">{model.valid ? model.energyRequiredKwh.toFixed(2) : '—'} kWh</strong>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+                    <span className="text-sm font-bold text-slate-700 block">Moc użyta do planu</span>
+                    <strong className="text-2xl text-slate-900">{model.valid ? model.maxPowerKw.toFixed(2) : '—'} kW</strong>
+                  </div>
+                </>
+              )}
+
               <label className="text-sm font-bold text-slate-700">
                 Tryb pracy
                 <select value={contiguous ? 'contiguous' : 'flexible'} onChange={(event) => setContiguous(event.target.value === 'contiguous')} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal bg-white">
@@ -237,15 +360,13 @@ function PlannerContent({
               </label>
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
                 <span className="text-sm font-bold text-slate-700 block">Minimalny czas pracy</span>
-                <strong className="text-2xl text-slate-900">{power > 0 ? (energy / power).toFixed(2) : '—'} h</strong>
+                <strong className="text-2xl text-slate-900">{model.valid && model.maxPowerKw > 0 ? (model.energyRequiredKwh / model.maxPowerKw).toFixed(2) : '—'} h</strong>
               </div>
             </div>
           </div>
 
           {futureForecastLoading && missingNextDayData && (
-            <div className="p-5 bg-blue-50 text-blue-800 rounded-2xl border border-blue-200 font-semibold">
-              Pobieram ceny na kolejny dzień…
-            </div>
+            <div className="p-5 bg-blue-50 text-blue-800 rounded-2xl border border-blue-200 font-semibold">Pobieram ceny na kolejny dzień…</div>
           )}
 
           {!futureForecastLoading && missingNextDayData && (
