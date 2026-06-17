@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { scheduleDevice } = require('../lib/deviceScheduler.ts');
+const { resolveBaseDate } = require('../lib/overnightWindow.ts');
 
 test('builds a contiguous schedule across midnight using two days of prices', () => {
   const result = scheduleDevice([
@@ -64,4 +65,15 @@ test('returns unfeasible when next-day prices are missing', () => {
   assert.equal(result.feasible, false);
   assert.equal(result.crossesMidnight, true);
   assert.match(result.reason, /maksymalnie 2.00 kWh/);
+});
+
+test('anchors the early-morning API request to the previous date', () => {
+  assert.equal(
+    resolveBaseDate('2026-06-18', '01:00', 'today', '22:00', '06:00'),
+    '2026-06-17'
+  );
+  assert.equal(
+    resolveBaseDate('2026-06-18', '12:00', 'today', '22:00', '06:00'),
+    '2026-06-18'
+  );
 });
