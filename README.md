@@ -69,6 +69,54 @@ praca ciągła albo przerywana
 
 Dla pracy ciągłej silnik wyszukuje najtańsze kolejne interwały. Dla pracy przerywanej wybiera najtańsze dostępne interwały w całym oknie czasowym. Wynik zawiera harmonogram, dostarczoną energię, koszt RCE, średnią cenę oraz czas pracy.
 
+## API Home Assistanta
+
+Wszystkie endpointy wymagają nagłówka:
+
+```text
+Authorization: Bearer <API_KEY>
+```
+
+Dostęp jest sprawdzany wspólnie przez `lib/apiSubscription.ts` na podstawie aktywnej subskrypcji PRO i daty jej ważności.
+
+### Harmonogram urządzenia
+
+```text
+GET /api/v1/schedule/device
+```
+
+Parametry:
+
+```text
+day=today|tomorrow
+energy_kwh=6
+power_kw=2
+earliest_start=00:00
+latest_end=07:00
+contiguous=true
+device_name=boiler
+```
+
+Odpowiedź zawiera m.in.:
+
+```text
+trigger_automation
+active_slot
+schedule.slots
+schedule.total_cost_pln
+schedule.average_price_pln_kwh
+```
+
+Jeśli plan jest niewykonalny, endpoint nadal zwraca poprawną odpowiedź HTTP z `trigger_automation: false`, aby Home Assistant nie przechodził niepotrzebnie w stan `unavailable`.
+
+### Ogólne najtańsze okno
+
+```text
+GET /api/v1/forecast/best-window
+```
+
+Endpoint pozostaje dostępny dla prostszych i starszych konfiguracji.
+
 ## Dane PSE
 
 Wspólny klient i parser znajdują się w `lib/pse.ts`. Z tego samego kodu korzystają:
@@ -78,6 +126,8 @@ Wspólny klient i parser znajdują się w `lib/pse.ts`. Z tego samego kodu korzy
 - API Home Assistanta.
 
 Obsługiwane są dane godzinowe i 15-minutowe oraz dwa warianty filtrowania API PSE: `business_date` i starsze `doba`.
+
+Pole `period` jest traktowane jako początek interwału. Pole `dtime` bywa czasem końca interwału i jest używane tylko jako fallback.
 
 ## Uruchomienie lokalne
 
@@ -149,7 +199,8 @@ Stan subskrypcji Stripe i dostęp do API.
 - wymiana danych użytkownika odbywa się w jednej transakcji PostgreSQL,
 - dane PRO są pobierane dopiero po serwerowej weryfikacji subskrypcji,
 - webhook Stripe jest weryfikowany podpisem,
-- API Home Assistanta sprawdza aktywność subskrypcji i datę jej ważności.
+- API Home Assistanta sprawdza aktywność subskrypcji i datę jej ważności,
+- odpowiedzi API harmonogramu mają `Cache-Control: private, no-store`.
 
 ## Ograniczenia
 
@@ -157,6 +208,7 @@ Stan subskrypcji Stripe i dostęp do API.
 - użytkownik musi sam przepisać stawki z aktualnego cennika lub faktury,
 - formaty CSV operatorów są nadal rozpoznawane heurystycznie,
 - kalkulator nie obsługuje jeszcze wielostrefowych taryf dystrybucyjnych,
-- planer nie steruje jeszcze fizycznie urządzeniami i nie uwzględnia sprawności, strat cieplnych ani stanu baterii,
+- planer nie uwzględnia sprawności, strat cieplnych ani stanu baterii,
 - harmonogram obejmuje jedną dobę i nie planuje okien przechodzących przez północ,
+- Home Assistant odpytuje API cyklicznie, więc dokładność momentu przełączenia zależy od `scan_interval`,
 - klucze API wymagają w przyszłości haszowania, rotacji i rate limitingu.

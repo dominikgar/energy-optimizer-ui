@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
-import { Pool } from 'pg';
+import { authenticateApiSubscription } from '../../../../../lib/apiSubscription';
 import { fetchPseDayForecast } from '../../../../../lib/pse';
 import { isTimeInsideWindow } from '../../../../../lib/timeWindow';
 
 export const dynamic = 'force-dynamic';
 
 const TIME_ZONE = 'Europe/Warsaw';
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
 
 function formatDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -18,21 +13,9 @@ function formatDate(date: Date): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const header = request.headers.get('authorization');
-    if (!header?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Brak autoryzacji.' }, { status: 401 });
-    }
-
-    const token = header.slice(7).trim();
-    const { rows } = await pool.query(
-      'SELECT is_active, current_period_end FROM user_subscriptions WHERE api_key = $1',
-      [token]
-    );
-
-    const subscription = rows[0];
-    const expired = subscription?.current_period_end && new Date(subscription.current_period_end) < new Date();
-    if (!subscription?.is_active || expired) {
-      return NextResponse.json({ error: 'Nieprawidłowy klucz lub brak aktywnej subskrypcji PRO.' }, { status: 403 });
+    const auth = await authenticateApiSubscription(request);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const generatedAt = new Date();

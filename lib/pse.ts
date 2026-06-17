@@ -30,12 +30,8 @@ function formatMinutes(minutes: number): string {
 }
 
 function extractTime(row: Record<string, unknown>, itemCount: number): string | null {
-  const explicit = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
-  const explicitMatch = explicit.match(/(\d{1,2}):(\d{2})/);
-  if (explicitMatch) {
-    return `${String(Number(explicitMatch[1])).padStart(2, '0')}:${explicitMatch[2]}`;
-  }
-
+  // `period` opisuje początek interwału, podczas gdy `dtime` w danych
+  // 15-minutowych PSE wskazuje zwykle jego koniec. Do planowania używamy startu.
   const periodValue = row.period ?? row.okres;
   if (periodValue !== undefined && periodValue !== null) {
     const periodText = String(periodValue);
@@ -53,6 +49,12 @@ function extractTime(row: Record<string, unknown>, itemCount: number): string | 
       }
       return `${String(Math.max(0, periodNumber - 1)).padStart(2, '0')}:00`;
     }
+  }
+
+  const explicit = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
+  const explicitMatch = explicit.match(/(\d{1,2}):(\d{2})/);
+  if (explicitMatch) {
+    return `${String(Number(explicitMatch[1])).padStart(2, '0')}:${explicitMatch[2]}`;
   }
 
   const hourNumber = Number.parseInt(String(row.godzina ?? ''), 10);
