@@ -325,7 +325,7 @@ export function scheduleDevice(
     slots: optimized,
     totalEnergyKwh: deliveredEnergy,
     totalCost: optimizedCost,
-    averageCostPerKwh: deliveredEnergy > 0 ? optimizedCost / deliveredEnergy : 0,
+    averagePricePerKwh: deliveredEnergy > 0 ? optimizedCost / deliveredEnergy : 0,
     runtimeHours,
     earliestPossibleCost: earliestCost,
     savingsVsEarliest: earliestCost === null ? null : earliestCost - optimizedCost,
