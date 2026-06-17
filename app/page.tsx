@@ -9,6 +9,7 @@ import { UserButton } from '@clerk/nextjs';
 
 import LandingPage from './components/LandingPage';
 import TabRadar from './components/TabRadar';
+import TabPlanner from './components/TabPlanner';
 import TabHistory from './components/TabHistory';
 import TabAdvisor from './components/TabAdvisor';
 import TabApi from './components/TabApi';
@@ -53,6 +54,16 @@ function toRadarForecast(forecast, dateLabel) {
     worstWindowStart: forecast.worstWindowStart,
     worstWindowEnd: forecast.worstWindowEnd,
     worstWindowAvgPrice: forecast.worstWindowAveragePrice
+  };
+}
+
+function toPlannerForecast(forecast, label) {
+  if (!forecast) return null;
+  return {
+    date: forecast.date,
+    label,
+    intervalMinutes: forecast.intervalMinutes,
+    prices: forecast.prices
   };
 }
 
@@ -235,9 +246,11 @@ export default async function Home({ searchParams }) {
 
   let todayForecast = null;
   let tomorrowForecast = null;
+  let todayPlannerForecast = null;
+  let tomorrowPlannerForecast = null;
   let forecastError = null;
 
-  if (activeTab === 'radar' && isPremiumUser) {
+  if ((activeTab === 'radar' || activeTab === 'planner') && isPremiumUser) {
     try {
       const polishNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
       const today = formatDate(polishNow);
@@ -252,8 +265,10 @@ export default async function Home({ searchParams }) {
 
       todayForecast = toRadarForecast(todayData, 'Dzisiaj');
       tomorrowForecast = toRadarForecast(tomorrowData, 'Jutro');
+      todayPlannerForecast = toPlannerForecast(todayData, 'Dzisiaj');
+      tomorrowPlannerForecast = toPlannerForecast(tomorrowData, 'Jutro');
 
-      if (!todayForecast && !tomorrowForecast) {
+      if (!todayData && !tomorrowData) {
         forecastError = 'PSE nie opublikowało jeszcze danych na dziś ani na jutro.';
       }
     } catch (error) {
@@ -300,15 +315,16 @@ export default async function Home({ searchParams }) {
       <main className="max-w-7xl mx-auto px-6 pt-10">
         <nav className="grid grid-cols-2 md:flex md:flex-row gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200 mb-10">
           {[
-            { id: 'radar', label: 'Radar na dziś 🟢', short: 'Radar 🟢' },
-            { id: 'history', label: 'Profil Historyczny', short: 'Historia' },
-            { id: 'advisor', label: 'Doradca Taryfowy', short: 'Doradca' },
-            { id: 'api', label: 'API Automatyzacji 🔌', short: 'API 🔌' }
+            { id: 'radar', label: 'Radar cenowy 🟢', short: 'Radar 🟢' },
+            { id: 'planner', label: 'Planer urządzeń ⚡', short: 'Planer ⚡' },
+            { id: 'history', label: 'Profil historyczny', short: 'Historia' },
+            { id: 'advisor', label: 'Doradca taryfowy', short: 'Doradca' },
+            { id: 'api', label: 'API automatyzacji 🔌', short: 'API 🔌' }
           ].map((tab) => (
             <Link
               key={tab.id}
               href={`/?tab=${tab.id}&days=${days}&provider=${selectedProvider}${tab.id === 'advisor' ? `&${advisorQuery}` : ''}`}
-              className={`flex items-center justify-center px-2 py-3 md:px-6 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
+              className={`flex items-center justify-center px-2 py-3 md:px-5 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
             >
               <span className="hidden md:inline">{tab.label}</span>
               <span className="md:hidden">{tab.short}</span>
@@ -319,6 +335,14 @@ export default async function Home({ searchParams }) {
         <div className="animate-fade-in-up">
           {activeTab === 'radar' && (
             <TabRadar isPremiumUser={isPremiumUser} todayForecast={todayForecast} tomorrowForecast={tomorrowForecast} forecastError={forecastError} />
+          )}
+          {activeTab === 'planner' && (
+            <TabPlanner
+              isPremiumUser={isPremiumUser}
+              todayForecast={todayPlannerForecast}
+              tomorrowForecast={tomorrowPlannerForecast}
+              forecastError={forecastError}
+            />
           )}
           {activeTab === 'history' && <TabHistory days={days} chartData={chartData} dataRange={dataRange} />}
           {activeTab === 'advisor' && (

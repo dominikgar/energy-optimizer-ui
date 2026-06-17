@@ -9,6 +9,7 @@ Aplikacja Next.js do analizy godzinowego zużycia energii, porównywania go z pu
 - kalkulator konfigurowalnej oferty dynamicznej,
 - konfigurowalny model wspólnych opłat dystrybucyjnych,
 - radar cen PSE na dziś i jutro,
+- planer pracy bojlera, EV i innych odbiorników,
 - płatny dostęp PRO przez Stripe,
 - API dla Home Assistanta.
 
@@ -52,11 +53,28 @@ zmienną opłatę dystrybucyjną za kWh
 
 Dystrybucja jest dodawana identycznie do G11 i wariantu dynamicznego. Dzięki temu kalkulator pokazuje bardziej realistyczną sumę rachunku, ale wspólne opłaty nie zmieniają różnicy pomiędzy ofertami sprzedaży.
 
+## Planer urządzeń
+
+Silnik harmonogramowania znajduje się w `lib/deviceScheduler.ts`.
+
+Obsługiwane ograniczenia:
+
+```text
+wymagana energia [kWh]
+maksymalna moc urządzenia [kW]
+najwcześniejsza godzina uruchomienia
+najpóźniejsza godzina zakończenia
+praca ciągła albo przerywana
+```
+
+Dla pracy ciągłej silnik wyszukuje najtańsze kolejne interwały. Dla pracy przerywanej wybiera najtańsze dostępne interwały w całym oknie czasowym. Wynik zawiera harmonogram, dostarczoną energię, koszt RCE, średnią cenę oraz czas pracy.
+
 ## Dane PSE
 
 Wspólny klient i parser znajdują się w `lib/pse.ts`. Z tego samego kodu korzystają:
 
 - Radar cenowy,
+- Planer urządzeń,
 - API Home Assistanta.
 
 Obsługiwane są dane godzinowe i 15-minutowe oraz dwa warianty filtrowania API PSE: `business_date` i starsze `doba`.
@@ -139,5 +157,6 @@ Stan subskrypcji Stripe i dostęp do API.
 - użytkownik musi sam przepisać stawki z aktualnego cennika lub faktury,
 - formaty CSV operatorów są nadal rozpoznawane heurystycznie,
 - kalkulator nie obsługuje jeszcze wielostrefowych taryf dystrybucyjnych,
-- aplikacja nie steruje jeszcze konkretnymi urządzeniami z uwzględnieniem mocy, energii i godziny zakończenia,
+- planer nie steruje jeszcze fizycznie urządzeniami i nie uwzględnia sprawności, strat cieplnych ani stanu baterii,
+- harmonogram obejmuje jedną dobę i nie planuje okien przechodzących przez północ,
 - klucze API wymagają w przyszłości haszowania, rotacji i rate limitingu.
