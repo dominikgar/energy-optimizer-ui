@@ -13,6 +13,8 @@ import TabHistory from './components/TabHistory';
 import TabAdvisor from './components/TabAdvisor';
 import TabApi from './components/TabApi';
 import Footer from './components/Footer';
+import { calculateDynamicOfferCost, calculateFixedRateCost } from '../lib/costEngine';
+import { fetchPseDayForecast } from '../lib/pse';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -25,122 +27,50 @@ const IconZap = () => (
   </svg>
 );
 
-function toMinutes(time) {
-  const [hour, minute] = time.split(':').map(Number);
-  return hour * 60 + (minute || 0);
+function parseNumberParam(value, fallback, min, max) {
+  const normalized = String(value ?? '').replace(',', '.');
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
 }
 
-function extractPseTime(row, itemCount) {
-  const explicitDateTime = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
-  const explicitMatch = explicitDateTime.match(/(\d{2}):(\d{2})/);
-  if (explicitMatch) return explicitMatch[0];
-
-  const periodValue = row.period ?? row.okres;
-  if (periodValue !== undefined && periodValue !== null) {
-    const periodText = String(periodValue);
-    const periodTimeMatch = periodText.match(/(\d{1,2}):(\d{2})/);
-    if (periodTimeMatch) {
-      return `${String(Number(periodTimeMatch[1])).padStart(2, '0')}:${periodTimeMatch[2]}`;
-    }
-
-    const periodNumber = Number.parseInt(periodText, 10);
-    if (Number.isFinite(periodNumber)) {
-      if (itemCount > 30) {
-        const hour = Math.floor((periodNumber - 1) / 4);
-        const minute = ((periodNumber - 1) % 4) * 15;
-        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-      }
-      return `${String(Math.max(0, periodNumber - 1)).padStart(2, '0')}:00`;
-    }
-  }
-
-  if (row.godzina !== undefined) {
-    const hour = Number.parseInt(String(row.godzina), 10);
-    return `${String(Math.max(0, hour - 1)).padStart(2, '0')}:00`;
-  }
-
-  return null;
+function formatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-async function fetchPseData(targetDateStr, dateLabel) {
-  const params = new URLSearchParams({ '$filter': `business_date eq '${targetDateStr}'` });
-  const response = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, {
-    cache: 'no-store',
-    headers: { Accept: 'application/json' }
-  });
-
-  if (!response.ok) return null;
-  const json = await response.json();
-  if (!Array.isArray(json.value) || json.value.length === 0) return null;
-
-  const prices = json.value
-    .map((row) => {
-      const time = extractPseTime(row, json.value.length);
-      const price = Number(row.rce_pln) / 1000;
-      if (!time || !Number.isFinite(price)) return null;
-      return { time, price };
-    })
-    .filter(Boolean)
-    .sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
-
-  if (prices.length === 0) return null;
-
-  const isQuarterHourly = prices.length > 30;
-  const elementsInThreeHours = isQuarterHourly ? 12 : 3;
-  if (prices.length < elementsInThreeHours) return null;
-
-  let bestWindowStart = '';
-  let bestWindowEnd = '';
-  let bestWindowAvgPrice = Number.POSITIVE_INFINITY;
-  let worstWindowStart = '';
-  let worstWindowEnd = '';
-  let worstWindowAvgPrice = Number.NEGATIVE_INFINITY;
-
-  for (let i = 0; i <= prices.length - elementsInThreeHours; i++) {
-    const windowItems = prices.slice(i, i + elementsInThreeHours);
-    const average = windowItems.reduce((sum, item) => sum + item.price, 0) / elementsInThreeHours;
-    const lastItem = windowItems[windowItems.length - 1];
-    let endMinutes = toMinutes(lastItem.time) + (isQuarterHourly ? 15 : 60);
-    endMinutes %= 1440;
-    const endHour = Math.floor(endMinutes / 60);
-    const endMinute = endMinutes % 60;
-    const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
-
-    if (average < bestWindowAvgPrice) {
-      bestWindowAvgPrice = average;
-      bestWindowStart = windowItems[0].time;
-      bestWindowEnd = endTime;
-    }
-
-    if (average > worstWindowAvgPrice) {
-      worstWindowAvgPrice = average;
-      worstWindowStart = windowItems[0].time;
-      worstWindowEnd = endTime;
-    }
-  }
-
+function toRadarForecast(forecast, dateLabel) {
+  if (!forecast) return null;
   return {
-    prices,
-    date: targetDateStr,
+    date: forecast.date,
     dateLabel,
-    absoluteMinPrice: Math.min(...prices.map((item) => item.price)),
-    absoluteMaxPrice: Math.max(...prices.map((item) => item.price)),
-    bestWindowStart,
-    bestWindowEnd,
-    bestWindowAvgPrice,
-    worstWindowStart,
-    worstWindowEnd,
-    worstWindowAvgPrice
+    prices: forecast.prices.map((item) => ({ time: item.time, price: item.pricePerKwh })),
+    absoluteMinPrice: forecast.minimumPrice,
+    absoluteMaxPrice: forecast.maximumPrice,
+    bestWindowStart: forecast.bestWindowStart,
+    bestWindowEnd: forecast.bestWindowEnd,
+    bestWindowAvgPrice: forecast.bestWindowAveragePrice,
+    worstWindowStart: forecast.worstWindowStart,
+    worstWindowEnd: forecast.worstWindowEnd,
+    worstWindowAvgPrice: forecast.worstWindowAveragePrice
   };
 }
 
 export default async function Home({ searchParams }) {
   const { userId } = auth();
-  const resolvedParams = await Promise.resolve(searchParams || {});
-  const activeTab = resolvedParams.tab || 'radar';
-  const parsedDays = Number.parseInt(resolvedParams.days, 10);
+  const params = await Promise.resolve(searchParams || {});
+  const activeTab = params.tab || 'radar';
+  const parsedDays = Number.parseInt(params.days, 10);
   const days = [3, 7, 30].includes(parsedDays) ? parsedDays : 3;
-  const selectedProvider = resolvedParams.provider || 'G11_TAURON';
+  const selectedProvider = params.provider || 'G11_TAURON';
+
+  const dynamicOfferConfig = {
+    marketMultiplier: parseNumberParam(params.multiplier, 1, 0, 10),
+    marginPerKwh: parseNumberParam(params.margin, 0, -5, 5),
+    variableFeePerKwh: parseNumberParam(params.variableFee, 0, -5, 5),
+    monthlyFee: parseNumberParam(params.monthlyFee, 0, 0, 1000),
+    vatPercent: parseNumberParam(params.vat, 0, 0, 100),
+    floorNegativeMarketPricesAtZero: params.negativePrices === 'floor'
+  };
 
   const globalStyles = `
     @keyframes fade-in-up {
@@ -148,8 +78,6 @@ export default async function Home({ searchParams }) {
       100% { opacity: 1; transform: translateY(0); }
     }
     .animate-fade-in-up { animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); }
-    .text-gradient { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   `;
 
   if (!userId) {
@@ -184,9 +112,23 @@ export default async function Home({ searchParams }) {
     console.error('Database Error:', error);
   }
 
-  const displayProviders = availableTariffs.filter((tariff) => tariff.tariff_name !== 'G11' && tariff.tariff_name.startsWith('G11'));
+  const displayProviders = availableTariffs.filter(
+    (tariff) => tariff.tariff_name !== 'G11' && tariff.tariff_name.startsWith('G11')
+  );
+
   let chartData = [];
-  const stats = { totalKwh: 0, costRCE: 0, costG11: 0, worstHour: 0, worstHourCost: 0, bestHour: 0, bestHourPrice: 999 };
+  const stats = {
+    totalKwh: 0,
+    costRCE: 0,
+    costG11: 0,
+    costDynamic: 0,
+    difference: 0,
+    dynamicBreakdown: null,
+    worstHour: 0,
+    worstHourCost: 0,
+    bestHour: 0,
+    bestHourPrice: 999
+  };
   const dataRange = { min: null, max: null };
 
   if (activeTab === 'history' || activeTab === 'advisor') {
@@ -202,7 +144,12 @@ export default async function Home({ searchParams }) {
       }
 
       const { rows } = await pool.query(`
-        WITH hourly_prices AS (
+        WITH bounds AS (
+          SELECT MAX(timestamp) AS max_ts
+          FROM energy_consumption
+          WHERE user_id = $1
+        ),
+        hourly_prices AS (
           SELECT DATE_TRUNC('hour', timestamp) AS hour_ts, AVG(price_pln_mwh) AS price_mwh
           FROM energy_prices
           GROUP BY DATE_TRUNC('hour', timestamp)
@@ -210,24 +157,27 @@ export default async function Home({ searchParams }) {
         SELECT c.timestamp, c.value_kwh, p.price_mwh
         FROM energy_consumption c
         JOIN hourly_prices p ON DATE_TRUNC('hour', c.timestamp) = p.hour_ts
+        CROSS JOIN bounds b
         WHERE c.user_id = $1
           AND (c.type ILIKE '%pobór%' OR c.type ILIKE '%pobor%')
-        ORDER BY c.timestamp DESC
-        LIMIT $2
-      `, [userId, days * 24]);
+          AND c.timestamp > b.max_ts - make_interval(days => $2::int)
+          AND c.timestamp <= b.max_ts
+        ORDER BY c.timestamp ASC
+      `, [userId, days]);
 
       const g11Rate = Number.parseFloat(currentTariff.price_per_kwh);
       const hourlyAggregation = Array.from({ length: 24 }, () => ({ cost: 0, priceSum: 0, count: 0 }));
+      const costPoints = [];
 
-      chartData = rows.reverse().map((row) => {
+      chartData = rows.map((row) => {
         const kwh = Number.parseFloat(row.value_kwh);
         const priceRCE = Number.parseFloat(row.price_mwh) / 1000;
         const timestamp = new Date(row.timestamp);
         const hour = timestamp.getHours();
 
+        costPoints.push({ kwh, marketPricePerKwh: priceRCE });
         stats.totalKwh += kwh;
         stats.costRCE += kwh * priceRCE;
-        stats.costG11 += kwh * g11Rate;
         hourlyAggregation[hour].cost += kwh * priceRCE;
         hourlyAggregation[hour].priceSum += priceRCE;
         hourlyAggregation[hour].count++;
@@ -239,6 +189,17 @@ export default async function Home({ searchParams }) {
           g11Price: g11Rate
         };
       });
+
+      const firstTimestamp = rows[0]?.timestamp ? new Date(rows[0].timestamp) : null;
+      const lastTimestamp = rows.at(-1)?.timestamp ? new Date(rows.at(-1).timestamp) : null;
+      const actualPeriodDays = firstTimestamp && lastTimestamp
+        ? Math.max(1 / 24, (lastTimestamp.getTime() - firstTimestamp.getTime() + 60 * 60 * 1000) / (24 * 60 * 60 * 1000))
+        : 0;
+
+      stats.costG11 = calculateFixedRateCost(costPoints, g11Rate);
+      stats.dynamicBreakdown = calculateDynamicOfferCost(costPoints, dynamicOfferConfig, actualPeriodDays);
+      stats.costDynamic = stats.dynamicBreakdown.totalCost;
+      stats.difference = stats.costG11 - stats.costDynamic;
 
       hourlyAggregation.forEach((item, hour) => {
         if (item.count === 0) return;
@@ -261,20 +222,21 @@ export default async function Home({ searchParams }) {
   let tomorrowForecast = null;
   let forecastError = null;
 
-  // Dane PRO pobieramy wyłącznie po serwerowym potwierdzeniu aktywnej subskrypcji.
   if (activeTab === 'radar' && isPremiumUser) {
     try {
-      const polandTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
-      const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const todayString = formatDate(polandTime);
-      const tomorrow = new Date(polandTime);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowString = formatDate(tomorrow);
+      const polishNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
+      const today = formatDate(polishNow);
+      const tomorrowDate = new Date(polishNow);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const tomorrow = formatDate(tomorrowDate);
 
-      [todayForecast, tomorrowForecast] = await Promise.all([
-        fetchPseData(todayString, 'Dzisiaj'),
-        fetchPseData(tomorrowString, 'Jutro')
+      const [todayData, tomorrowData] = await Promise.all([
+        fetchPseDayForecast(today),
+        fetchPseDayForecast(tomorrow)
       ]);
+
+      todayForecast = toRadarForecast(todayData, 'Dzisiaj');
+      tomorrowForecast = toRadarForecast(tomorrowData, 'Jutro');
 
       if (!todayForecast && !tomorrowForecast) {
         forecastError = 'PSE nie opublikowało jeszcze danych na dziś ani na jutro.';
@@ -284,6 +246,15 @@ export default async function Home({ searchParams }) {
       forecastError = 'Błąd połączenia z PSE.';
     }
   }
+
+  const advisorQuery = new URLSearchParams({
+    multiplier: String(dynamicOfferConfig.marketMultiplier),
+    margin: String(dynamicOfferConfig.marginPerKwh),
+    variableFee: String(dynamicOfferConfig.variableFeePerKwh),
+    monthlyFee: String(dynamicOfferConfig.monthlyFee),
+    vat: String(dynamicOfferConfig.vatPercent),
+    negativePrices: dynamicOfferConfig.floorNegativeMarketPricesAtZero ? 'floor' : 'pass'
+  }).toString();
 
   return (
     <div className="min-h-screen w-full bg-slate-50 font-sans text-slate-900 pb-20">
@@ -307,7 +278,7 @@ export default async function Home({ searchParams }) {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 pt-10">
-        <nav className="grid grid-cols-2 md:flex md:flex-row gap-2 p-1.5 bg-slate-200/50 backdrop-blur-sm rounded-2xl border border-slate-200 mb-10">
+        <nav className="grid grid-cols-2 md:flex md:flex-row gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200 mb-10">
           {[
             { id: 'radar', label: 'Radar na dziś 🟢', short: 'Radar 🟢' },
             { id: 'history', label: 'Profil Historyczny', short: 'Historia' },
@@ -316,8 +287,8 @@ export default async function Home({ searchParams }) {
           ].map((tab) => (
             <Link
               key={tab.id}
-              href={`/?tab=${tab.id}&days=${days}&provider=${selectedProvider}`}
-              className={`flex items-center justify-center px-2 py-3 md:px-6 md:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
+              href={`/?tab=${tab.id}&days=${days}&provider=${selectedProvider}${tab.id === 'advisor' ? `&${advisorQuery}` : ''}`}
+              className={`flex items-center justify-center px-2 py-3 md:px-6 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
             >
               <span className="hidden md:inline">{tab.label}</span>
               <span className="md:hidden">{tab.short}</span>
@@ -331,7 +302,14 @@ export default async function Home({ searchParams }) {
           )}
           {activeTab === 'history' && <TabHistory days={days} chartData={chartData} dataRange={dataRange} />}
           {activeTab === 'advisor' && (
-            <TabAdvisor days={days} selectedProvider={selectedProvider} displayProviders={displayProviders} chartData={chartData} stats={stats} />
+            <TabAdvisor
+              days={days}
+              selectedProvider={selectedProvider}
+              displayProviders={displayProviders}
+              chartData={chartData}
+              stats={stats}
+              dynamicOfferConfig={dynamicOfferConfig}
+            />
           )}
           {activeTab === 'api' && <TabApi userApiKey={userApiKey} />}
         </div>

@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EnergyOptimizer
 
-## Getting Started
+Aplikacja Next.js do analizy godzinowego zużycia energii, porównywania go z publicznymi cenami RCE PSE oraz udostępniania rekomendowanych okien czasowych do Home Assistanta.
 
-First, run the development server:
+## Zakres produktu
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- import historii zużycia z plików CSV,
+- wykres profilu zużycia,
+- kalkulator konfigurowalnej oferty dynamicznej,
+- radar cen PSE na dziś i jutro,
+- płatny dostęp PRO przez Stripe,
+- API dla Home Assistanta.
+
+## Model kosztowy
+
+Silnik znajduje się w `lib/costEngine.ts`.
+
+Koszt oferty dynamicznej jest liczony jako:
+
+```text
+koszt rynkowy
++ marża za kWh
++ dodatkowa opłata zmienna za kWh
++ proporcjonalna część opłaty miesięcznej
++ wskazany VAT
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Koszt rynkowy może korzystać z:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+RCE × mnożnik sprzedawcy
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Użytkownik określa także, czy ujemne ceny RCE są przekazywane klientowi, czy sprzedawca stosuje minimalną cenę 0 PLN/kWh.
 
-## Learn More
+Model nie obejmuje jeszcze dystrybucji. Stawka G11 przechowywana w tabeli `energy_tariffs` jest traktowana jako skonfigurowana stawka porównawcza za kWh.
 
-To learn more about Next.js, take a look at the following resources:
+## Dane PSE
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Wspólny klient i parser znajdują się w `lib/pse.ts`. Z tego samego kodu korzystają:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Radar cenowy,
+- API Home Assistanta.
 
-## Deploy on Vercel
+Obsługiwane są dane godzinowe i 15-minutowe oraz dwa warianty filtrowania API PSE: `business_date` i starsze `doba`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Uruchomienie lokalne
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+npm run dev
+```
+
+Aplikacja będzie dostępna pod adresem `http://localhost:3000`.
+
+## Wymagane zmienne środowiskowe
+
+```text
+DATABASE_URL
+NEXT_PUBLIC_BASE_URL
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+```
+
+## Najważniejsze tabele
+
+### `energy_consumption`
+
+Historia zużycia przypisana do użytkownika.
+
+Wymagane pola:
+
+```text
+user_id
+timestamp
+value_kwh
+type
+```
+
+Wymagane ograniczenie unikalności:
+
+```text
+UNIQUE (user_id, timestamp)
+```
+
+### `energy_prices`
+
+Publiczne ceny RCE PSE.
+
+```text
+timestamp
+price_pln_mwh
+```
+
+### `energy_tariffs`
+
+Stawki porównawcze G11.
+
+```text
+tariff_name
+price_per_kwh
+description
+```
+
+### `user_subscriptions`
+
+Stan subskrypcji Stripe i dostęp do API.
+
+## Bezpieczeństwo
+
+- import CSV ma limit 10 MB,
+- wymiana danych użytkownika odbywa się w jednej transakcji PostgreSQL,
+- dane PRO są pobierane dopiero po serwerowej weryfikacji subskrypcji,
+- webhook Stripe jest weryfikowany podpisem,
+- API Home Assistanta sprawdza aktywność subskrypcji i datę jej ważności.
+
+## Ograniczenia
+
+- kalkulator nie odwzorowuje jeszcze pełnej faktury za dystrybucję,
+- formaty CSV operatorów są nadal rozpoznawane heurystycznie,
+- aplikacja nie steruje jeszcze konkretnymi urządzeniami z uwzględnieniem mocy, energii i godziny zakończenia,
+- klucze API wymagają w przyszłości haszowania, rotacji i rate limitingu.
