@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { pool } from '../../../lib/db';
