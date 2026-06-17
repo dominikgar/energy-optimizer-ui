@@ -1,46 +1,114 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-interface TabApiProps {
+interface Props {
   userApiKey: string | null;
 }
 
-function CodeBlock({ children }: { children: string }) {
-  return (
-    <pre className="bg-slate-900 text-emerald-400 p-6 rounded-2xl text-sm font-mono overflow-x-auto shadow-inner leading-relaxed whitespace-pre">
-      {children}
-    </pre>
-  );
+interface AccessState {
+  loading: boolean;
+  entitled: boolean;
+  mode: 'none' | 'legacy' | 'hashed';
+  prefix: string | null;
+  token: string | null;
+  error: string | null;
 }
 
-export default function TabApi({ userApiKey }: TabApiProps) {
-  const [copied, setCopied] = useState(false);
+function CodeBlock({ children }: { children: string }) {
+  return <pre className="overflow-x-auto whitespace-pre rounded-2xl bg-slate-900 p-6 font-mono text-sm leading-relaxed text-emerald-400">{children}</pre>;
+}
 
-  const handleCopy = async () => {
-    if (!userApiKey) return;
-    await navigator.clipboard.writeText(userApiKey);
+export default function TabApi({ userApiKey }: Props) {
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [access, setAccess] = useState<AccessState>({
+    loading: !userApiKey,
+    entitled: Boolean(userApiKey),
+    mode: userApiKey ? 'legacy' : 'none',
+    prefix: userApiKey ? `${userApiKey.slice(0, 16)}…` : null,
+    token: userApiKey,
+    error: null
+  });
+
+  useEffect(() => {
+    fetch('/api/access-token', { cache: 'no-store' })
+      .then(async (response) => {
+        const data = await response.json();
+        if (response.status === 403) {
+          setAccess((current) => ({ ...current, loading: false, entitled: false }));
+          return;
+        }
+        if (!response.ok) throw new Error(data.error || 'Nie udało się odczytać tokenu.');
+        setAccess({
+          loading: false,
+          entitled: true,
+          mode: data.mode,
+          prefix: data.prefix,
+          token: data.legacy_token || null,
+          error: null
+        });
+      })
+      .catch((error) => setAccess((current) => ({
+        ...current,
+        loading: false,
+        error: error instanceof Error ? error.message : String(error)
+      })));
+  }, []);
+
+  const copyToken = async () => {
+    if (!access.token) return;
+    await navigator.clipboard.writeText(access.token);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!userApiKey) {
+  const changeToken = async () => {
+    setBusy(true);
+    try {
+      const response = await fetch('/api/access-token', { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Nie udało się wygenerować tokenu.');
+      setAccess({ loading: false, entitled: true, mode: 'hashed', prefix: data.prefix, token: data.token, error: null });
+    } catch (error) {
+      setAccess((current) => ({ ...current, error: error instanceof Error ? error.message : String(error) }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revokeToken = async () => {
+    setBusy(true);
+    try {
+      const response = await fetch('/api/access-token', { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Nie udało się unieważnić tokenu.');
+      setAccess({ loading: false, entitled: true, mode: 'none', prefix: null, token: null, error: null });
+    } catch (error) {
+      setAccess((current) => ({ ...current, error: error instanceof Error ? error.message : String(error) }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (access.loading) {
+    return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center font-semibold text-slate-500">Sprawdzam dostęp do API…</div>;
+  }
+
+  if (!access.entitled) {
     return (
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
-        <div className="text-4xl mb-4">🔒</div>
-        <h3 className="text-2xl font-bold mb-2">Funkcja PRO</h3>
-        <p className="text-slate-500 mb-6">
-          API automatyzacji jest dostępne tylko w pakiecie PRO. Aktywuj subskrypcję, aby uzyskać klucz.
-        </p>
+      <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="mb-4 text-4xl">🔒</div>
+        <h3 className="mb-2 text-2xl font-bold">Funkcja PRO</h3>
+        <p className="text-slate-500">API automatyzacji jest dostępne tylko w pakiecie PRO.</p>
       </div>
     );
   }
 
+  const exampleToken = access.token || '<TWÓJ_TOKEN>';
   const scheduleUrl = 'https://energyoptimizer.pl/api/v1/schedule/device';
-  const bestWindowUrl = 'https://energyoptimizer.pl/api/v1/forecast/best-window';
-
   const curlExample = `curl -G "${scheduleUrl}" \\
-  -H "Authorization: Bearer ${userApiKey}" \\
+  -H "Authorization: Bearer ${exampleToken}" \\
   --data-urlencode "day=today" \\
   --data-urlencode "device_name=boiler" \\
   --data-urlencode "energy_kwh=6" \\
@@ -49,10 +117,10 @@ export default function TabApi({ userApiKey }: TabApiProps) {
   --data-urlencode "latest_end=07:00" \\
   --data-urlencode "contiguous=true"`;
 
-  const homeAssistantRest = `rest:
+  const homeAssistant = `rest:
   - resource: "${scheduleUrl}"
     headers:
-      Authorization: "Bearer ${userApiKey}"
+      Authorization: "Bearer ${exampleToken}"
     params:
       day: today
       device_name: boiler
@@ -64,143 +132,44 @@ export default function TabApi({ userApiKey }: TabApiProps) {
     scan_interval: 300
     binary_sensor:
       - name: "EO Boiler Should Run"
-        unique_id: eo_boiler_should_run
-        value_template: "{{ value_json.trigger_automation }}"
-        icon: mdi:water-boiler
-        json_attributes:
-          - recommendation_reason
-          - active_slot
-          - schedule
-          - valid_until
-    sensor:
-      - name: "EO Boiler Schedule Cost"
-        unique_id: eo_boiler_schedule_cost
-        value_template: "{{ value_json.schedule.total_cost_pln }}"
-        unit_of_measurement: "PLN"
-        icon: mdi:cash-clock`;
-
-  const homeAssistantAutomation = `automation:
-  - alias: "EnergyOptimizer - sterowanie bojlerem"
-    id: energyoptimizer_boiler_control
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.eo_boiler_should_run
-      - platform: homeassistant
-        event: start
-    action:
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: binary_sensor.eo_boiler_should_run
-                state: "on"
-            sequence:
-              - service: switch.turn_on
-                target:
-                  entity_id: switch.boiler
-        default:
-          - service: switch.turn_off
-            target:
-              entity_id: switch.boiler`;
-
-  const legacyRest = `rest:
-  - resource: "${bestWindowUrl}"
-    headers:
-      Authorization: "Bearer ${userApiKey}"
-    scan_interval: 900
-    sensor:
-      - name: "EO Current Price"
-        unique_id: eo_current_price
-        value_template: "{{ value_json.current_price_pln }}"
-        unit_of_measurement: "PLN/kWh"
-      - name: "EO Today Best Window Start"
-        unique_id: eo_today_window_start
-        value_template: "{{ value_json.recommended_start }}"
-      - name: "EO Today Best Window End"
-        unique_id: eo_today_window_end
-        value_template: "{{ value_json.recommended_end }}"`;
+        value_template: "{{ value_json.trigger_automation }}"`;
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-black mb-3">API automatyzacji</h2>
-        <p className="text-slate-600 mb-8 leading-relaxed max-w-4xl">
-          API może zwrócić ogólne najtańsze okno albo harmonogram konkretnego urządzenia. Harmonogram uwzględnia wymaganą energię, moc, dostępne godziny oraz pracę ciągłą lub przerywaną.
-        </p>
+      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <h2 className="mb-3 text-2xl font-black">API automatyzacji</h2>
+        <p className="mb-6 max-w-4xl leading-relaxed text-slate-600">Token jest traktowany jak hasło. Nowy token jest przechowywany wyłącznie jako skrót i po wygenerowaniu można go zobaczyć tylko raz.</p>
+        {access.error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{access.error}</div>}
 
-        <div className="mb-8">
-          <label className="block text-sm font-bold text-slate-700 mb-2">Twój klucz API — Bearer Token</label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="password"
-              readOnly
-              value={userApiKey}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-600 font-mono text-sm focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="bg-emerald-100 text-emerald-700 px-6 py-3 rounded-xl font-bold hover:bg-emerald-200 transition-colors"
-            >
-              {copied ? 'Skopiowano!' : 'Kopiuj klucz'}
-            </button>
-          </div>
-          <p className="text-xs text-slate-400 mt-2">Traktuj klucz jak hasło. Nie publikuj pliku konfiguracyjnego zawierającego ten token.</p>
-        </div>
-      </div>
-
-      <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-blue-600 mb-2">Rekomendowane</p>
-            <h3 className="text-2xl font-black">Harmonogram konkretnego urządzenia</h3>
-            <p className="text-slate-500 mt-2 max-w-3xl leading-6">
-              Home Assistant odpytuje endpoint co pięć minut. Pole <code>trigger_automation</code> jest prawdziwe wyłącznie podczas zaplanowanego interwału pracy.
-            </p>
-          </div>
-          <code className="text-xs bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 break-all">GET /api/v1/schedule/device</code>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-sm">
-          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-5">
-            <strong className="block mb-2">Najważniejsze parametry</strong>
-            <p><code>energy_kwh</code> — wymagana energia</p>
-            <p><code>power_kw</code> — maksymalna moc</p>
-            <p><code>earliest_start</code> / <code>latest_end</code> — dostępne okno</p>
-            <p><code>contiguous</code> — praca ciągła lub przerywana</p>
-          </div>
-          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-5">
-            <strong className="block mb-2">Najważniejsze pola odpowiedzi</strong>
-            <p><code>trigger_automation</code> — czy urządzenie ma działać teraz</p>
-            <p><code>active_slot</code> — aktualnie aktywny interwał</p>
-            <p><code>schedule.slots</code> — pełny harmonogram</p>
-            <p><code>schedule.total_cost_pln</code> — koszt według RCE</p>
-          </div>
-        </div>
-
-        <h4 className="font-black text-lg mb-3">Test przez cURL</h4>
-        <CodeBlock>{curlExample}</CodeBlock>
-
-        <h4 className="font-black text-lg mt-8 mb-3">configuration.yaml — sensor i sensor binarny</h4>
-        <CodeBlock>{homeAssistantRest}</CodeBlock>
-
-        <h4 className="font-black text-lg mt-8 mb-3">Automatyzacja włączająca bojler</h4>
-        <p className="text-sm text-slate-500 mb-3">Zmień <code>switch.boiler</code> na identyfikator własnego urządzenia.</p>
-        <CodeBlock>{homeAssistantAutomation}</CodeBlock>
+        {access.mode === 'none' ? (
+          <button type="button" disabled={busy} onClick={changeToken} className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white disabled:opacity-50">Generuj token</button>
+        ) : (
+          <>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input readOnly value={access.token || access.prefix || ''} type={access.token ? 'text' : 'password'} className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-sm text-slate-600" />
+              {access.token && <button type="button" onClick={copyToken} className="rounded-xl bg-emerald-100 px-5 py-3 font-bold text-emerald-700">{copied ? 'Skopiowano!' : 'Kopiuj'}</button>}
+              <button type="button" disabled={busy} onClick={changeToken} className="rounded-xl bg-blue-100 px-5 py-3 font-bold text-blue-700 disabled:opacity-50">{access.mode === 'legacy' ? 'Zabezpiecz i obróć' : 'Obróć'}</button>
+              <button type="button" disabled={busy} onClick={revokeToken} className="rounded-xl bg-red-50 px-5 py-3 font-bold text-red-700 disabled:opacity-50">Unieważnij</button>
+            </div>
+            {access.mode === 'legacy' && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">To starszy klucz przechowywany jawnie. Pozostaje aktywny do czasu rotacji.</p>}
+            {access.mode === 'hashed' && access.token && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-900">Skopiuj token teraz. Po odświeżeniu pełnego tokenu nie będzie można odzyskać.</p>}
+            {access.mode === 'hashed' && !access.token && <p className="mt-3 text-sm text-slate-500">Pełny token nie jest przechowywany. W razie utraty wykonaj rotację.</p>}
+          </>
+        )}
       </section>
 
-      <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-        <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Tryb prosty</p>
-        <h3 className="text-xl font-black mb-3">Ogólne najtańsze okno</h3>
-        <p className="text-slate-500 text-sm mb-5">
-          Ten endpoint pozostaje dostępny dla starszych konfiguracji i zwraca najlepsze ciągłe okno trzygodzinne bez parametrów konkretnego urządzenia.
-        </p>
-        <CodeBlock>{legacyRest}</CodeBlock>
-      </section>
+      {access.mode !== 'none' && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h3 className="mb-4 text-2xl font-black">Konfiguracja Home Assistanta</h3>
+          {!access.token && <p className="mb-4 text-sm text-amber-700">W przykładach użyto <code>&lt;TWÓJ_TOKEN&gt;</code>.</p>}
+          <h4 className="mb-3 font-black">Test cURL</h4>
+          <CodeBlock>{curlExample}</CodeBlock>
+          <h4 className="mb-3 mt-8 font-black">configuration.yaml</h4>
+          <CodeBlock>{homeAssistant}</CodeBlock>
+        </section>
+      )}
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-        API opiera harmonogram na surowych cenach RCE. Przed podłączeniem urządzenia dużej mocy sprawdź ograniczenia instalacji, stycznika, zabezpieczeń i producenta urządzenia. EnergyOptimizer nie zastępuje zabezpieczeń elektrycznych ani sterownika urządzenia.
-      </div>
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Po rotacji poprzedni token przestaje działać natychmiast. Limit ochronny wynosi 120 zapytań na pięć minut na ciepłą instancję.</div>
     </div>
   );
 }
