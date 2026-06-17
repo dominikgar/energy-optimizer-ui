@@ -1,3 +1,5 @@
+import { createAsyncCache } from './asyncCache';
+
 export interface PsePricePoint {
   time: string;
   pricePerKwh: number;
@@ -18,6 +20,22 @@ export interface PseDayForecast {
 }
 
 const PSE_ENDPOINT = 'https://api.raporty.pse.pl/api/rce-pln';
+const PSE_CACHE_POLICY = {
+  ttlMs: 5 * 60 * 1000,
+  emptyTtlMs: 60 * 1000,
+  staleMs: 30 * 60 * 1000,
+  retryTtlMs: 30 * 1000,
+  isEmpty: (value: PseDayForecast | null) => value === null
+};
+
+const globalForPse = globalThis as typeof globalThis & {
+  energyOptimizerPseCache?: ReturnType<typeof createAsyncCache<string, PseDayForecast | null>>;
+};
+
+const pseForecastCache = globalForPse.energyOptimizerPseCache
+  ?? createAsyncCache<string, PseDayForecast | null>();
+
+globalForPse.energyOptimizerPseCache = pseForecastCache;
 
 function timeToMinutes(time: string): number {
   const [hour, minute] = time.split(':').map(Number);
@@ -30,8 +48,6 @@ function formatMinutes(minutes: number): string {
 }
 
 function extractTime(row: Record<string, unknown>, itemCount: number): string | null {
-  // `period` opisuje początek interwału, podczas gdy `dtime` w danych
-  // 15-minutowych PSE wskazuje zwykle jego koniec. Do planowania używamy startu.
   const periodValue = row.period ?? row.okres;
   if (periodValue !== undefined && periodValue !== null) {
     const periodText = String(periodValue);
@@ -66,9 +82,6 @@ function extractTime(row: Record<string, unknown>, itemCount: number): string | 
 }
 
 function buildPseFilterUrl(filter: string): string {
-  // API PSE odrzuca wariant generowany przez URLSearchParams, w którym
-  // `$filter` staje się `%24filter`, a spacje są kodowane jako `+`.
-  // Pozostawiamy nazwę parametru literalnie i kodujemy spacje jako `%20`.
   return `${PSE_ENDPOINT}?$filter=${filter.replace(/ /g, '%20')}`;
 }
 
@@ -199,7 +212,16 @@ export function parsePseDayRows(
   };
 }
 
-export async function fetchPseDayForecast(date: string, windowHours = 3): Promise<PseDayForecast | null> {
+async function loadPseDayForecast(date: string, windowHours: number): Promise<PseDayForecast | null> {
   const rows = await fetchRawPseRows(date);
   return parsePseDayRows(rows, date, windowHours);
+}
+
+export async function fetchPseDayForecast(date: string, windowHours = 3): Promise<PseDayForecast | null> {
+  const cacheKey = `${date}:${windowHours}`;
+  return pseForecastCache.get(
+    cacheKey,
+    () => loadPseDayForecast(date, windowHours),
+    PSE_CACHE_POLICY
+  );
 }
