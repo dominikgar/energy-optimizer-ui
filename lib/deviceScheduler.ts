@@ -100,6 +100,32 @@ function chronologicalSchedule(
   return remaining <= 1e-6 ? slots : null;
 }
 
+function buildContiguousCandidate(
+  intervals: DevicePriceInterval[],
+  startIndex: number,
+  energyRequiredKwh: number,
+  powerKw: number
+): DeviceScheduleSlot[] | null {
+  let remaining = energyRequiredKwh;
+  const candidate: DeviceScheduleSlot[] = [];
+  let expectedStart = timeToMinutes(intervals[startIndex].start);
+
+  for (let index = startIndex; index < intervals.length && remaining > 1e-9; index++) {
+    const interval = intervals[index];
+    const intervalStart = timeToMinutes(interval.start);
+    if (intervalStart !== expectedStart) break;
+
+    const capacity = powerKw * (interval.durationMinutes / 60);
+    const allocated = Math.min(remaining, capacity);
+    const slot = allocateInterval(interval, allocated, powerKw);
+    candidate.push(slot);
+    remaining -= slot.energyKwh;
+    expectedStart = intervalStart + interval.durationMinutes;
+  }
+
+  return remaining <= 1e-6 ? candidate : null;
+}
+
 function cheapestFlexibleSchedule(
   intervals: DevicePriceInterval[],
   energyRequiredKwh: number,
@@ -125,24 +151,14 @@ function cheapestContiguousSchedule(
   let bestCost = Number.POSITIVE_INFINITY;
 
   for (let startIndex = 0; startIndex < intervals.length; startIndex++) {
-    let remaining = energyRequiredKwh;
-    const candidate: DeviceScheduleSlot[] = [];
-    let expectedStart = timeToMinutes(intervals[startIndex].start);
+    const candidate = buildContiguousCandidate(
+      intervals,
+      startIndex,
+      energyRequiredKwh,
+      powerKw
+    );
+    if (!candidate) continue;
 
-    for (let index = startIndex; index < intervals.length && remaining > 1e-9; index++) {
-      const interval = intervals[index];
-      const intervalStart = timeToMinutes(interval.start);
-      if (intervalStart !== expectedStart) break;
-
-      const capacity = powerKw * (interval.durationMinutes / 60);
-      const allocated = Math.min(remaining, capacity);
-      const slot = allocateInterval(interval, allocated, powerKw);
-      candidate.push(slot);
-      remaining -= slot.energyKwh;
-      expectedStart = intervalStart + interval.durationMinutes;
-    }
-
-    if (remaining > 1e-6) continue;
     const candidateCost = totalCost(candidate);
     if (candidateCost < bestCost) {
       bestCost = candidateCost;
@@ -151,6 +167,23 @@ function cheapestContiguousSchedule(
   }
 
   return best;
+}
+
+function earliestContiguousSchedule(
+  intervals: DevicePriceInterval[],
+  energyRequiredKwh: number,
+  powerKw: number
+): DeviceScheduleSlot[] | null {
+  for (let startIndex = 0; startIndex < intervals.length; startIndex++) {
+    const candidate = buildContiguousCandidate(
+      intervals,
+      startIndex,
+      energyRequiredKwh,
+      powerKw
+    );
+    if (candidate) return candidate;
+  }
+  return null;
 }
 
 export function scheduleDevice(
@@ -213,7 +246,9 @@ export function scheduleDevice(
       : 'Nie udało się zbudować harmonogramu dla podanych ograniczeń.');
   }
 
-  const earliest = chronologicalSchedule(eligible, energyRequiredKwh, maxPowerKw);
+  const earliest = request.requireContiguous
+    ? earliestContiguousSchedule(eligible, energyRequiredKwh, maxPowerKw)
+    : chronologicalSchedule(eligible, energyRequiredKwh, maxPowerKw);
   const optimizedCost = totalCost(optimized);
   const earliestCost = earliest ? totalCost(earliest) : null;
   const deliveredEnergy = optimized.reduce((sum, slot) => sum + slot.energyKwh, 0);
