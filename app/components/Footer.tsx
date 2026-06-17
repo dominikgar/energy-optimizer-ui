@@ -9,12 +9,6 @@ export default function Footer() {
           © {new Date().getFullYear()} EnergyOptimizer. Wszelkie prawa zastrzeżone.
         </div>
         <div className="flex flex-wrap gap-6 text-sm font-medium">
-          <Link href="/comfort" className="font-bold text-orange-600 hover:text-orange-700 transition-colors">
-            Komfort cieplny 🌡️
-          </Link>
-          <Link href="/battery" className="font-bold text-violet-600 hover:text-violet-700 transition-colors">
-            Magazyn i PV 🔋
-          </Link>
           <Link href="/faq" className="text-slate-600 hover:text-emerald-600 transition-colors">
             FAQ
           </Link>
