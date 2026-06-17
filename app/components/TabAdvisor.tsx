@@ -13,11 +13,30 @@ interface DynamicOfferConfig {
   floorNegativeMarketPricesAtZero: boolean;
 }
 
-interface CostBreakdown {
+interface DistributionConfig {
+  variableRatePerKwh: number;
+  additionalVariableRatePerKwh: number;
+  monthlyFixedFee: number;
+  monthlyCapacityFee: number;
+  vatPercent: number;
+}
+
+interface DynamicCostBreakdown {
   marketEnergyCost: number;
   marginCost: number;
   variableFeeCost: number;
   proratedMonthlyFee: number;
+  netSubtotal: number;
+  vatCost: number;
+  totalCost: number;
+  averageCostPerKwh: number;
+}
+
+interface DistributionBreakdown {
+  variableDistributionCost: number;
+  additionalVariableCost: number;
+  proratedFixedFee: number;
+  proratedCapacityFee: number;
   netSubtotal: number;
   vatCost: number;
   totalCost: number;
@@ -30,13 +49,17 @@ interface TabAdvisorProps {
   displayProviders: any[];
   chartData: any[];
   dynamicOfferConfig: DynamicOfferConfig;
+  distributionConfig: DistributionConfig;
   stats: {
     totalKwh: number;
     costG11: number;
     costRCE: number;
     costDynamic: number;
+    billG11: number;
+    billDynamic: number;
     difference: number;
-    dynamicBreakdown: CostBreakdown | null;
+    dynamicBreakdown: DynamicCostBreakdown | null;
+    distributionBreakdown: DistributionBreakdown | null;
     worstHour: number;
     worstHourCost: number;
     bestHour: number;
@@ -44,14 +67,19 @@ interface TabAdvisorProps {
   };
 }
 
-function offerQuery(config: DynamicOfferConfig): string {
+function calculatorQuery(dynamicConfig: DynamicOfferConfig, distributionConfig: DistributionConfig): string {
   return new URLSearchParams({
-    multiplier: String(config.marketMultiplier),
-    margin: String(config.marginPerKwh),
-    variableFee: String(config.variableFeePerKwh),
-    monthlyFee: String(config.monthlyFee),
-    vat: String(config.vatPercent),
-    negativePrices: config.floorNegativeMarketPricesAtZero ? 'floor' : 'pass'
+    multiplier: String(dynamicConfig.marketMultiplier),
+    margin: String(dynamicConfig.marginPerKwh),
+    variableFee: String(dynamicConfig.variableFeePerKwh),
+    monthlyFee: String(dynamicConfig.monthlyFee),
+    vat: String(dynamicConfig.vatPercent),
+    negativePrices: dynamicConfig.floorNegativeMarketPricesAtZero ? 'floor' : 'pass',
+    distributionVariable: String(distributionConfig.variableRatePerKwh),
+    distributionAdditional: String(distributionConfig.additionalVariableRatePerKwh),
+    distributionMonthly: String(distributionConfig.monthlyFixedFee),
+    capacityMonthly: String(distributionConfig.monthlyCapacityFee),
+    distributionVat: String(distributionConfig.vatPercent)
   }).toString();
 }
 
@@ -61,10 +89,13 @@ export default function TabAdvisor({
   displayProviders,
   chartData,
   stats,
-  dynamicOfferConfig
+  dynamicOfferConfig,
+  distributionConfig
 }: TabAdvisorProps) {
-  const configQuery = offerQuery(dynamicOfferConfig);
+  const configQuery = calculatorQuery(dynamicOfferConfig, distributionConfig);
   const dynamicCheaper = stats.difference > 0;
+  const dynamicAverageBill = stats.totalKwh > 0 ? stats.billDynamic / stats.totalKwh : 0;
+  const g11AverageBill = stats.totalKwh > 0 ? stats.billG11 / stats.totalKwh : 0;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -72,7 +103,7 @@ export default function TabAdvisor({
         <div>
           <h2 className="text-3xl font-black">Kalkulator oferty dynamicznej</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            Wpisz parametry z cennika sprzedawcy. Silnik doliczy mnożnik ceny rynkowej, marżę, opłatę zmienną, część opłaty miesięcznej oraz wskazany VAT.
+            Wpisz parametry z cennika sprzedawcy i rachunku dystrybucyjnego. Kalkulator pokaże osobno sprzedaż energii, dystrybucję oraz orientacyjną sumę rachunku.
           </p>
         </div>
         <div className="flex bg-slate-200/50 p-1 rounded-xl">
@@ -90,7 +121,7 @@ export default function TabAdvisor({
       </div>
 
       <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl text-sm leading-6 text-amber-900">
-        <strong>Jak wpisywać stawki:</strong> użyj jednostek podanych w ofercie. Jeśli ceny i opłaty są już brutto, pozostaw VAT równy 0%. Dystrybucja nie jest jeszcze częścią tego modelu.
+        <strong>Jak wpisywać stawki:</strong> jeśli dana cena jest już brutto, nie doliczaj jej ponownie przez pole VAT. Opłaty dystrybucyjne są dodawane identycznie do G11 i wariantu dynamicznego, dlatego zwiększają sumę rachunku, ale zwykle nie zmieniają różnicy między ofertami sprzedaży.
       </div>
 
       <form method="GET" className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/40">
@@ -98,7 +129,7 @@ export default function TabAdvisor({
         <input type="hidden" name="days" value={days} />
         <input type="hidden" name="provider" value={selectedProvider} />
 
-        <div className="mb-6">
+        <div className="mb-8">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">Stawka G11 jako punkt odniesienia</span>
           <div className="flex flex-wrap gap-2">
             {displayProviders.map((tariff) => (
@@ -118,53 +149,84 @@ export default function TabAdvisor({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <label className="text-sm font-bold text-slate-700">
-            Mnożnik RCE
-            <input name="multiplier" type="number" min="0" max="10" step="0.01" defaultValue={dynamicOfferConfig.marketMultiplier} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-            <span className="mt-1 block text-xs font-normal text-slate-400">Np. 1 oznacza 100% ceny RCE.</span>
-          </label>
-          <label className="text-sm font-bold text-slate-700">
-            Marża sprzedawcy [PLN/kWh]
-            <input name="margin" type="number" min="-5" max="5" step="0.001" defaultValue={dynamicOfferConfig.marginPerKwh} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-          </label>
-          <label className="text-sm font-bold text-slate-700">
-            Inna opłata zmienna [PLN/kWh]
-            <input name="variableFee" type="number" min="-5" max="5" step="0.001" defaultValue={dynamicOfferConfig.variableFeePerKwh} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-          </label>
-          <label className="text-sm font-bold text-slate-700">
-            Opłata miesięczna [PLN]
-            <input name="monthlyFee" type="number" min="0" max="1000" step="0.01" defaultValue={dynamicOfferConfig.monthlyFee} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-          </label>
-          <label className="text-sm font-bold text-slate-700">
-            VAT [%]
-            <input name="vat" type="number" min="0" max="100" step="0.1" defaultValue={dynamicOfferConfig.vatPercent} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
-          </label>
-          <label className="text-sm font-bold text-slate-700">
-            Ceny ujemne
-            <select name="negativePrices" defaultValue={dynamicOfferConfig.floorNegativeMarketPricesAtZero ? 'floor' : 'pass'} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal bg-white">
-              <option value="pass">Przekazywane klientowi</option>
-              <option value="floor">Minimalna cena 0 PLN</option>
-            </select>
-          </label>
-        </div>
+        <section>
+          <h3 className="text-lg font-black text-slate-900 mb-4">1. Sprzedaż energii — oferta dynamiczna</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <label className="text-sm font-bold text-slate-700">
+              Mnożnik RCE
+              <input name="multiplier" type="number" min="0" max="10" step="0.01" defaultValue={dynamicOfferConfig.marketMultiplier} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+              <span className="mt-1 block text-xs font-normal text-slate-400">1 oznacza 100% ceny RCE.</span>
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Marża sprzedawcy [PLN/kWh]
+              <input name="margin" type="number" min="-5" max="5" step="0.001" defaultValue={dynamicOfferConfig.marginPerKwh} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Inna opłata zmienna [PLN/kWh]
+              <input name="variableFee" type="number" min="-5" max="5" step="0.001" defaultValue={dynamicOfferConfig.variableFeePerKwh} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Opłata miesięczna sprzedawcy [PLN]
+              <input name="monthlyFee" type="number" min="0" max="1000" step="0.01" defaultValue={dynamicOfferConfig.monthlyFee} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              VAT sprzedaży [%]
+              <input name="vat" type="number" min="0" max="100" step="0.1" defaultValue={dynamicOfferConfig.vatPercent} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Ceny ujemne
+              <select name="negativePrices" defaultValue={dynamicOfferConfig.floorNegativeMarketPricesAtZero ? 'floor' : 'pass'} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal bg-white">
+                <option value="pass">Przekazywane klientowi</option>
+                <option value="floor">Minimalna cena 0 PLN</option>
+              </select>
+            </label>
+          </div>
+        </section>
 
-        <button type="submit" className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white hover:bg-blue-700 transition-colors">
-          Przelicz ofertę
+        <section className="mt-10 pt-8 border-t border-slate-100">
+          <h3 className="text-lg font-black text-slate-900 mb-2">2. Dystrybucja — wspólna dla obu wariantów</h3>
+          <p className="text-sm text-slate-500 mb-5">Zsumuj odpowiednie pozycje z taryfy dystrybucyjnej lub faktury. Pola mogą pozostać zerowe, jeśli interesuje Cię tylko sprzedaż energii.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <label className="text-sm font-bold text-slate-700">
+              Dystrybucja zmienna [PLN/kWh]
+              <input name="distributionVariable" type="number" min="0" max="20" step="0.001" defaultValue={distributionConfig.variableRatePerKwh} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Pozostałe zmienne [PLN/kWh]
+              <input name="distributionAdditional" type="number" min="0" max="20" step="0.001" defaultValue={distributionConfig.additionalVariableRatePerKwh} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Stałe opłaty miesięczne [PLN]
+              <input name="distributionMonthly" type="number" min="0" max="2000" step="0.01" defaultValue={distributionConfig.monthlyFixedFee} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              Opłata mocowa miesięczna [PLN]
+              <input name="capacityMonthly" type="number" min="0" max="2000" step="0.01" defaultValue={distributionConfig.monthlyCapacityFee} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              VAT dystrybucji [%]
+              <input name="distributionVat" type="number" min="0" max="100" step="0.1" defaultValue={distributionConfig.vatPercent} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal" />
+            </label>
+          </div>
+        </section>
+
+        <button type="submit" className="mt-8 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white hover:bg-blue-700 transition-colors">
+          Przelicz cały rachunek
         </button>
       </form>
 
-      {chartData.length > 0 && stats.dynamicBreakdown ? (
+      {chartData.length > 0 && stats.dynamicBreakdown && stats.distributionBreakdown ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="p-7 rounded-3xl border-2 border-slate-100 bg-white">
-              <div className="text-slate-400 font-bold uppercase text-xs mb-2">Wybrana stawka G11</div>
-              <div className="text-3xl font-black text-slate-800">{stats.costG11.toFixed(2)} PLN</div>
+              <div className="text-slate-400 font-bold uppercase text-xs mb-2">Szacowany rachunek G11</div>
+              <div className="text-3xl font-black text-slate-800">{stats.billG11.toFixed(2)} PLN</div>
+              <div className="mt-2 text-xs text-slate-500">Średnio {g11AverageBill.toFixed(3)} PLN/kWh</div>
             </div>
             <div className="p-7 rounded-3xl border-2 border-blue-100 bg-blue-50">
-              <div className="text-blue-600 font-bold uppercase text-xs mb-2">Skonfigurowana oferta dynamiczna</div>
-              <div className="text-3xl font-black text-blue-700">{stats.costDynamic.toFixed(2)} PLN</div>
-              <div className="mt-2 text-xs text-blue-600">Średnio {stats.dynamicBreakdown.averageCostPerKwh.toFixed(3)} PLN/kWh</div>
+              <div className="text-blue-600 font-bold uppercase text-xs mb-2">Szacowany rachunek dynamiczny</div>
+              <div className="text-3xl font-black text-blue-700">{stats.billDynamic.toFixed(2)} PLN</div>
+              <div className="mt-2 text-xs text-blue-600">Średnio {dynamicAverageBill.toFixed(3)} PLN/kWh</div>
             </div>
             <div className={`p-7 rounded-3xl border-2 ${dynamicCheaper ? 'border-emerald-100 bg-emerald-50' : 'border-red-100 bg-red-50'}`}>
               <div className={`font-bold uppercase text-xs mb-2 ${dynamicCheaper ? 'text-emerald-600' : 'text-red-600'}`}>Różnica w analizowanym okresie</div>
@@ -172,21 +234,39 @@ export default function TabAdvisor({
                 {Math.abs(stats.difference).toFixed(2)} PLN
               </div>
               <div className={`mt-2 text-xs ${dynamicCheaper ? 'text-emerald-600' : 'text-red-600'}`}>
-                {dynamicCheaper ? 'Model dynamiczny tańszy' : stats.difference < 0 ? 'G11 tańsza' : 'Koszt równy'}
+                {dynamicCheaper ? 'Wariant dynamiczny tańszy' : stats.difference < 0 ? 'G11 tańsza' : 'Koszt równy'}
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-7 rounded-3xl border border-slate-200 shadow-sm">
-            <h3 className="text-xl font-black mb-5">Rozbicie kosztu oferty dynamicznej</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div><span className="text-slate-400 block">Cena rynkowa</span><strong>{stats.dynamicBreakdown.marketEnergyCost.toFixed(2)} PLN</strong></div>
-              <div><span className="text-slate-400 block">Marża</span><strong>{stats.dynamicBreakdown.marginCost.toFixed(2)} PLN</strong></div>
-              <div><span className="text-slate-400 block">Opłata zmienna</span><strong>{stats.dynamicBreakdown.variableFeeCost.toFixed(2)} PLN</strong></div>
-              <div><span className="text-slate-400 block">Część opłaty miesięcznej</span><strong>{stats.dynamicBreakdown.proratedMonthlyFee.toFixed(2)} PLN</strong></div>
-              <div><span className="text-slate-400 block">VAT</span><strong>{stats.dynamicBreakdown.vatCost.toFixed(2)} PLN</strong></div>
-              <div><span className="text-slate-400 block">Surowy RCE bez dodatków</span><strong>{stats.costRCE.toFixed(2)} PLN</strong></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-7 rounded-3xl border border-slate-200 shadow-sm">
+              <h3 className="text-xl font-black mb-5">Sprzedaż energii — wariant dynamiczny</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><span className="text-slate-400 block">Cena rynkowa</span><strong>{stats.dynamicBreakdown.marketEnergyCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Marża</span><strong>{stats.dynamicBreakdown.marginCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Opłata zmienna</span><strong>{stats.dynamicBreakdown.variableFeeCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Część opłaty miesięcznej</span><strong>{stats.dynamicBreakdown.proratedMonthlyFee.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">VAT sprzedaży</span><strong>{stats.dynamicBreakdown.vatCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Razem sprzedaż</span><strong>{stats.costDynamic.toFixed(2)} PLN</strong></div>
+              </div>
             </div>
+
+            <div className="bg-white p-7 rounded-3xl border border-slate-200 shadow-sm">
+              <h3 className="text-xl font-black mb-5">Dystrybucja — wspólna</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><span className="text-slate-400 block">Zmienna</span><strong>{stats.distributionBreakdown.variableDistributionCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Pozostałe zmienne</span><strong>{stats.distributionBreakdown.additionalVariableCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Stałe miesięczne</span><strong>{stats.distributionBreakdown.proratedFixedFee.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Opłata mocowa</span><strong>{stats.distributionBreakdown.proratedCapacityFee.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">VAT dystrybucji</span><strong>{stats.distributionBreakdown.vatCost.toFixed(2)} PLN</strong></div>
+                <div><span className="text-slate-400 block">Razem dystrybucja</span><strong>{stats.distributionBreakdown.totalCost.toFixed(2)} PLN</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-100 border border-slate-200 p-5 rounded-2xl text-sm text-slate-600">
+            Składnik sprzedażowy G11 w tym porównaniu wynosi <strong>{stats.costG11.toFixed(2)} PLN</strong>, a surowy koszt RCE bez dodatków <strong>{stats.costRCE.toFixed(2)} PLN</strong>.
           </div>
         </>
       ) : (
