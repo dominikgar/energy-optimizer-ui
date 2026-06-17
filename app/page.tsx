@@ -14,6 +14,7 @@ import TabAdvisor from './components/TabAdvisor';
 import TabApi from './components/TabApi';
 import Footer from './components/Footer';
 import { calculateDynamicOfferCost, calculateFixedRateCost } from '../lib/costEngine';
+import { calculateDistributionCost } from '../lib/distributionCost';
 import { fetchPseDayForecast } from '../lib/pse';
 
 const pool = new Pool({
@@ -72,6 +73,14 @@ export default async function Home({ searchParams }) {
     floorNegativeMarketPricesAtZero: params.negativePrices === 'floor'
   };
 
+  const distributionConfig = {
+    variableRatePerKwh: parseNumberParam(params.distributionVariable, 0, 0, 20),
+    additionalVariableRatePerKwh: parseNumberParam(params.distributionAdditional, 0, 0, 20),
+    monthlyFixedFee: parseNumberParam(params.distributionMonthly, 0, 0, 2000),
+    monthlyCapacityFee: parseNumberParam(params.capacityMonthly, 0, 0, 2000),
+    vatPercent: parseNumberParam(params.distributionVat, 0, 0, 100)
+  };
+
   const globalStyles = `
     @keyframes fade-in-up {
       0% { opacity: 0; transform: translateY(20px); }
@@ -122,8 +131,11 @@ export default async function Home({ searchParams }) {
     costRCE: 0,
     costG11: 0,
     costDynamic: 0,
+    billG11: 0,
+    billDynamic: 0,
     difference: 0,
     dynamicBreakdown: null,
+    distributionBreakdown: null,
     worstHour: 0,
     worstHourCost: 0,
     bestHour: 0,
@@ -199,7 +211,10 @@ export default async function Home({ searchParams }) {
       stats.costG11 = calculateFixedRateCost(costPoints, g11Rate);
       stats.dynamicBreakdown = calculateDynamicOfferCost(costPoints, dynamicOfferConfig, actualPeriodDays);
       stats.costDynamic = stats.dynamicBreakdown.totalCost;
-      stats.difference = stats.costG11 - stats.costDynamic;
+      stats.distributionBreakdown = calculateDistributionCost(stats.totalKwh, distributionConfig, actualPeriodDays);
+      stats.billG11 = stats.costG11 + stats.distributionBreakdown.totalCost;
+      stats.billDynamic = stats.costDynamic + stats.distributionBreakdown.totalCost;
+      stats.difference = stats.billG11 - stats.billDynamic;
 
       hourlyAggregation.forEach((item, hour) => {
         if (item.count === 0) return;
@@ -253,7 +268,12 @@ export default async function Home({ searchParams }) {
     variableFee: String(dynamicOfferConfig.variableFeePerKwh),
     monthlyFee: String(dynamicOfferConfig.monthlyFee),
     vat: String(dynamicOfferConfig.vatPercent),
-    negativePrices: dynamicOfferConfig.floorNegativeMarketPricesAtZero ? 'floor' : 'pass'
+    negativePrices: dynamicOfferConfig.floorNegativeMarketPricesAtZero ? 'floor' : 'pass',
+    distributionVariable: String(distributionConfig.variableRatePerKwh),
+    distributionAdditional: String(distributionConfig.additionalVariableRatePerKwh),
+    distributionMonthly: String(distributionConfig.monthlyFixedFee),
+    capacityMonthly: String(distributionConfig.monthlyCapacityFee),
+    distributionVat: String(distributionConfig.vatPercent)
   }).toString();
 
   return (
@@ -309,6 +329,7 @@ export default async function Home({ searchParams }) {
               chartData={chartData}
               stats={stats}
               dynamicOfferConfig={dynamicOfferConfig}
+              distributionConfig={distributionConfig}
             />
           )}
           {activeTab === 'api' && <TabApi userApiKey={userApiKey} />}

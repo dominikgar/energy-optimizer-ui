@@ -7,13 +7,16 @@ Aplikacja Next.js do analizy godzinowego zużycia energii, porównywania go z pu
 - import historii zużycia z plików CSV,
 - wykres profilu zużycia,
 - kalkulator konfigurowalnej oferty dynamicznej,
+- konfigurowalny model wspólnych opłat dystrybucyjnych,
 - radar cen PSE na dziś i jutro,
 - płatny dostęp PRO przez Stripe,
 - API dla Home Assistanta.
 
 ## Model kosztowy
 
-Silnik znajduje się w `lib/costEngine.ts`.
+### Sprzedaż energii
+
+Silnik sprzedaży znajduje się w `lib/costEngine.ts`.
 
 Koszt oferty dynamicznej jest liczony jako:
 
@@ -33,7 +36,21 @@ RCE × mnożnik sprzedawcy
 
 Użytkownik określa także, czy ujemne ceny RCE są przekazywane klientowi, czy sprzedawca stosuje minimalną cenę 0 PLN/kWh.
 
-Model nie obejmuje jeszcze dystrybucji. Stawka G11 przechowywana w tabeli `energy_tariffs` jest traktowana jako skonfigurowana stawka porównawcza za kWh.
+Stawka G11 przechowywana w tabeli `energy_tariffs` jest traktowana jako skonfigurowana stawka porównawcza za kWh.
+
+### Dystrybucja
+
+Model dystrybucji znajduje się w `lib/distributionCost.ts` i obsługuje:
+
+```text
+zmienną opłatę dystrybucyjną za kWh
++ inne zmienne opłaty za kWh
++ proporcjonalną część stałych opłat miesięcznych
++ proporcjonalną część opłaty mocowej
++ wskazany VAT
+```
+
+Dystrybucja jest dodawana identycznie do G11 i wariantu dynamicznego. Dzięki temu kalkulator pokazuje bardziej realistyczną sumę rachunku, ale wspólne opłaty nie zmieniają różnicy pomiędzy ofertami sprzedaży.
 
 ## Dane PSE
 
@@ -118,7 +135,9 @@ Stan subskrypcji Stripe i dostęp do API.
 
 ## Ograniczenia
 
-- kalkulator nie odwzorowuje jeszcze pełnej faktury za dystrybucję,
+- aplikacja nie posiada jeszcze zweryfikowanych presetów konkretnych ofert sprzedawców i OSD,
+- użytkownik musi sam przepisać stawki z aktualnego cennika lub faktury,
 - formaty CSV operatorów są nadal rozpoznawane heurystycznie,
+- kalkulator nie obsługuje jeszcze wielostrefowych taryf dystrybucyjnych,
 - aplikacja nie steruje jeszcze konkretnymi urządzeniami z uwzględnieniem mocy, energii i godziny zakończenia,
 - klucze API wymagają w przyszłości haszowania, rotacji i rate limitingu.
