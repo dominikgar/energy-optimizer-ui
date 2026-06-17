@@ -135,8 +135,12 @@ async function fetchRawPseRows(date: string): Promise<Record<string, unknown>[]>
   return [];
 }
 
-export async function fetchPseDayForecast(date: string, windowHours = 3): Promise<PseDayForecast | null> {
-  const rows = await fetchRawPseRows(date);
+export function parsePseDayRows(
+  inputRows: Record<string, unknown>[],
+  date: string,
+  windowHours = 3
+): PseDayForecast | null {
+  const rows = inputRows.filter((row) => rowMatchesDate(row, date));
   if (rows.length === 0) return null;
 
   const prices = rows
@@ -193,4 +197,9 @@ export async function fetchPseDayForecast(date: string, windowHours = 3): Promis
     minimumPrice: Math.min(...prices.map((item) => item.pricePerKwh)),
     maximumPrice: Math.max(...prices.map((item) => item.pricePerKwh))
   };
+}
+
+export async function fetchPseDayForecast(date: string, windowHours = 3): Promise<PseDayForecast | null> {
+  const rows = await fetchRawPseRows(date);
+  return parsePseDayRows(rows, date, windowHours);
 }
