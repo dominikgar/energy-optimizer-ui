@@ -38,13 +38,13 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="mx-auto max-w-5xl px-6 py-20 text-center md:py-28">
           <div className="mb-8 inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
-            Analiza profilu zużycia i cen energii
+            Analiza, kalkulacja i planowanie zużycia
           </div>
           <h1 className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-4xl font-black leading-tight tracking-tight text-transparent md:text-6xl">
-            Sprawdź, czy taryfa dynamiczna pasuje do Twojego zużycia.
+            Sprawdź taryfę i zaplanuj urządzenia na najtańsze godziny.
           </h1>
           <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-slate-600 md:text-xl">
-            Wgraj historię godzinowego zużycia, porównaj ją z publicznymi cenami RCE i zobacz, kiedy korzystasz z energii najdrożej. Bez obietnic z góry — wynik zależy od Twoich danych i warunków konkretnej oferty sprzedawcy.
+            Wgraj historię godzinowego zużycia, porównaj ją z cenami RCE, skonfiguruj ofertę sprzedawcy i wyznacz harmonogram dla bojlera lub ładowania EV. Wynik zależy od Twoich danych i warunków konkretnej oferty.
           </p>
           <div className="mt-10">
             <SignInButton mode="modal">
@@ -66,7 +66,7 @@ export default function LandingPage() {
               <ul className="mt-8 space-y-3 font-semibold text-slate-700">
                 <li>✓ Historia zużycia na wykresie</li>
                 <li>✓ Najdroższe i najtańsze godziny</li>
-                <li>✓ Porównanie orientacyjne z wybraną stawką G11</li>
+                <li>✓ Konfigurowalny rachunek G11 i dynamiczny</li>
                 <li>✓ Możliwość trwałego usunięcia danych</li>
               </ul>
             </div>
@@ -99,10 +99,11 @@ export default function LandingPage() {
             <p className="mb-3 text-sm font-black uppercase tracking-widest text-emerald-600">Funkcje</p>
             <h2 className="text-3xl font-black text-slate-900 md:text-4xl">Od analizy do automatyzacji</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <FeatureCard icon="📊" title="Profil historyczny">Import danych CSV i analiza godzin, w których zużywasz najwięcej energii.</FeatureCard>
-            <FeatureCard icon="💰" title="Doradca taryfowy">Orientacyjne zestawienie wybranej stawki G11 z surowymi cenami RCE.</FeatureCard>
+            <FeatureCard icon="💰" title="Doradca taryfowy">Konfigurowalny model sprzedaży, dystrybucji i orientacyjnej sumy rachunku.</FeatureCard>
             <FeatureCard icon="🕒" title="Radar cenowy">Dane PSE na dziś i jutro oraz najtańsze ciągłe okno trzygodzinne w pakiecie PRO.</FeatureCard>
+            <FeatureCard icon="⚡" title="Planer urządzeń">Harmonogram dla bojlera, EV lub innego odbiornika według energii, mocy i terminu zakończenia.</FeatureCard>
             <FeatureCard icon="🔌" title="Home Assistant API">Sygnał automatyzacji aktywny wyłącznie podczas aktualnego rekomendowanego okna.</FeatureCard>
           </div>
         </section>
