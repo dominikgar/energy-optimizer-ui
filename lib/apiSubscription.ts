@@ -1,10 +1,4 @@
-// @ts-ignore
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+import { pool } from './db';
 
 export interface ApiSubscriptionAuth {
   ok: boolean;
@@ -16,22 +10,12 @@ export interface ApiSubscriptionAuth {
 export async function authenticateApiSubscription(request: Request): Promise<ApiSubscriptionAuth> {
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) {
-    return {
-      ok: false,
-      status: 401,
-      error: 'Brak autoryzacji.',
-      userId: null
-    };
+    return { ok: false, status: 401, error: 'Brak autoryzacji.', userId: null };
   }
 
   const token = header.slice(7).trim();
   if (!token) {
-    return {
-      ok: false,
-      status: 401,
-      error: 'Brak tokenu Bearer.',
-      userId: null
-    };
+    return { ok: false, status: 401, error: 'Brak tokenu Bearer.', userId: null };
   }
 
   const { rows } = await pool.query(
