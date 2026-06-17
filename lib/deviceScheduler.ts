@@ -2,6 +2,8 @@ export interface DevicePriceInterval {
   start: string;
   pricePerKwh: number;
   durationMinutes: number;
+  dayOffset?: number;
+  date?: string;
 }
 
 export interface DeviceScheduleRequest {
@@ -15,6 +17,10 @@ export interface DeviceScheduleRequest {
 export interface DeviceScheduleSlot {
   start: string;
   end: string;
+  startDayOffset: number;
+  endDayOffset: number;
+  startDate: string | null;
+  endDate: string | null;
   energyKwh: number;
   pricePerKwh: number;
   cost: number;
@@ -30,14 +36,18 @@ export interface DeviceScheduleResult {
   runtimeHours: number;
   earliestPossibleCost: number | null;
   savingsVsEarliest: number | null;
+  crossesMidnight: boolean;
+  windowDurationHours: number;
 }
+
+const MINUTES_PER_DAY = 24 * 60;
 
 function finiteOrZero(value: number): number {
   return Number.isFinite(value) ? value : 0;
 }
 
 function timeToMinutes(time: string): number {
-  if (time === '24:00') return 1440;
+  if (time === '24:00') return MINUTES_PER_DAY;
   const match = time.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return Number.NaN;
   const hour = Number(match[1]);
@@ -46,10 +56,39 @@ function timeToMinutes(time: string): number {
   return hour * 60 + minute;
 }
 
-function minutesToTime(minutes: number): string {
-  if (minutes >= 1440) return '24:00';
-  const safe = Math.max(0, minutes);
-  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+function formatClock(minutes: number): string {
+  const normalized = ((minutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
+}
+
+function addDays(date: string, days: number): string {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
+}
+
+function absoluteStartMinutes(interval: DevicePriceInterval): number {
+  return timeToMinutes(interval.start) + Math.max(0, Math.trunc(interval.dayOffset ?? 0)) * MINUTES_PER_DAY;
+}
+
+function formatEnd(
+  absoluteEnd: number,
+  startAbsolute: number
+): { time: string; dayOffset: number } {
+  const rawDayOffset = Math.floor(absoluteEnd / MINUTES_PER_DAY);
+  const minuteOfDay = absoluteEnd % MINUTES_PER_DAY;
+
+  if (minuteOfDay === 0 && absoluteEnd > startAbsolute) {
+    return {
+      time: '24:00',
+      dayOffset: Math.max(0, rawDayOffset - 1)
+    };
+  }
+
+  return {
+    time: formatClock(absoluteEnd),
+    dayOffset: rawDayOffset
+  };
 }
 
 function allocateInterval(
@@ -57,7 +96,8 @@ function allocateInterval(
   energyKwh: number,
   powerKw: number
 ): DeviceScheduleSlot {
-  const startMinutes = timeToMinutes(interval.start);
+  const startAbsolute = absoluteStartMinutes(interval);
+  const startDayOffset = Math.max(0, Math.trunc(interval.dayOffset ?? 0));
   const runtimeMinutes = Math.min(
     interval.durationMinutes,
     Math.ceil((energyKwh / powerKw) * 60)
@@ -66,10 +106,19 @@ function allocateInterval(
     energyKwh,
     powerKw * (runtimeMinutes / 60)
   );
+  const end = formatEnd(startAbsolute + runtimeMinutes, startAbsolute);
+  const startDate = interval.date ?? null;
+  const endDate = startDate
+    ? addDays(startDate, end.dayOffset - startDayOffset)
+    : null;
 
   return {
     start: interval.start,
-    end: minutesToTime(startMinutes + runtimeMinutes),
+    end: end.time,
+    startDayOffset,
+    endDayOffset: end.dayOffset,
+    startDate,
+    endDate,
     energyKwh: actualEnergy,
     pricePerKwh: interval.pricePerKwh,
     cost: actualEnergy * interval.pricePerKwh
@@ -108,11 +157,11 @@ function buildContiguousCandidate(
 ): DeviceScheduleSlot[] | null {
   let remaining = energyRequiredKwh;
   const candidate: DeviceScheduleSlot[] = [];
-  let expectedStart = timeToMinutes(intervals[startIndex].start);
+  let expectedStart = absoluteStartMinutes(intervals[startIndex]);
 
   for (let index = startIndex; index < intervals.length && remaining > 1e-9; index++) {
     const interval = intervals[index];
-    const intervalStart = timeToMinutes(interval.start);
+    const intervalStart = absoluteStartMinutes(interval);
     if (intervalStart !== expectedStart) break;
 
     const capacity = powerKw * (interval.durationMinutes / 60);
@@ -133,13 +182,17 @@ function cheapestFlexibleSchedule(
 ): DeviceScheduleSlot[] | null {
   const byPrice = [...intervals].sort((a, b) => {
     if (a.pricePerKwh !== b.pricePerKwh) return a.pricePerKwh - b.pricePerKwh;
-    return timeToMinutes(a.start) - timeToMinutes(b.start);
+    return absoluteStartMinutes(a) - absoluteStartMinutes(b);
   });
 
   const selected = chronologicalSchedule(byPrice, energyRequiredKwh, powerKw);
   if (!selected) return null;
 
-  return selected.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+  return selected.sort((a, b) => {
+    const aStart = timeToMinutes(a.start) + a.startDayOffset * MINUTES_PER_DAY;
+    const bStart = timeToMinutes(b.start) + b.startDayOffset * MINUTES_PER_DAY;
+    return aStart - bStart;
+  });
 }
 
 function cheapestContiguousSchedule(
@@ -193,7 +246,17 @@ export function scheduleDevice(
   const energyRequiredKwh = Math.max(0, finiteOrZero(request.energyRequiredKwh));
   const maxPowerKw = Math.max(0, finiteOrZero(request.maxPowerKw));
   const earliestMinutes = timeToMinutes(request.earliestStart);
-  const latestMinutes = timeToMinutes(request.latestEnd);
+  const rawLatestMinutes = timeToMinutes(request.latestEnd);
+  const crossesMidnight = request.latestEnd !== '24:00'
+    && Number.isFinite(earliestMinutes)
+    && Number.isFinite(rawLatestMinutes)
+    && rawLatestMinutes <= earliestMinutes;
+  const latestMinutes = crossesMidnight
+    ? rawLatestMinutes + MINUTES_PER_DAY
+    : rawLatestMinutes;
+  const windowDurationHours = Number.isFinite(earliestMinutes) && Number.isFinite(latestMinutes)
+    ? Math.max(0, latestMinutes - earliestMinutes) / 60
+    : 0;
 
   const emptyResult = (reason: string): DeviceScheduleResult => ({
     feasible: false,
@@ -204,7 +267,9 @@ export function scheduleDevice(
     averagePricePerKwh: 0,
     runtimeHours: 0,
     earliestPossibleCost: null,
-    savingsVsEarliest: null
+    savingsVsEarliest: null,
+    crossesMidnight,
+    windowDurationHours
   });
 
   if (energyRequiredKwh <= 0) return emptyResult('Wymagana energia musi być większa od zera.');
@@ -213,12 +278,12 @@ export function scheduleDevice(
     return emptyResult('Nieprawidłowe godziny dostępności.');
   }
   if (latestMinutes <= earliestMinutes) {
-    return emptyResult('Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia w ramach jednej doby.');
+    return emptyResult('Okno dostępności musi mieć dodatnią długość.');
   }
 
   const eligible = priceIntervals
     .filter((interval) => {
-      const start = timeToMinutes(interval.start);
+      const start = absoluteStartMinutes(interval);
       const end = start + interval.durationMinutes;
       return Number.isFinite(start)
         && interval.durationMinutes > 0
@@ -226,7 +291,7 @@ export function scheduleDevice(
         && start >= earliestMinutes
         && end <= latestMinutes;
     })
-    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    .sort((a, b) => absoluteStartMinutes(a) - absoluteStartMinutes(b));
 
   const availableEnergy = eligible.reduce(
     (sum, interval) => sum + maxPowerKw * (interval.durationMinutes / 60),
@@ -260,9 +325,11 @@ export function scheduleDevice(
     slots: optimized,
     totalEnergyKwh: deliveredEnergy,
     totalCost: optimizedCost,
-    averagePricePerKwh: deliveredEnergy > 0 ? optimizedCost / deliveredEnergy : 0,
+    averageCostPerKwh: deliveredEnergy > 0 ? optimizedCost / deliveredEnergy : 0,
     runtimeHours,
     earliestPossibleCost: earliestCost,
-    savingsVsEarliest: earliestCost === null ? null : earliestCost - optimizedCost
+    savingsVsEarliest: earliestCost === null ? null : earliestCost - optimizedCost,
+    crossesMidnight,
+    windowDurationHours
   };
 }
