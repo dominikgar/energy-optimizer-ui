@@ -1,5 +1,9 @@
 export const WARSAW_TIME_ZONE = 'Europe/Warsaw';
 
+if (typeof process !== 'undefined') {
+  process.env.TZ = WARSAW_TIME_ZONE;
+}
+
 export function formatWarsawDate(date: Date): string {
   return new Intl.DateTimeFormat('pl-PL', {
     timeZone: WARSAW_TIME_ZONE,
