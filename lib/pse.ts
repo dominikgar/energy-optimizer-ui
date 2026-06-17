@@ -17,6 +17,8 @@ export interface PseDayForecast {
   maximumPrice: number;
 }
 
+const PSE_ENDPOINT = 'https://api.raporty.pse.pl/api/rce-pln';
+
 function timeToMinutes(time: string): number {
   const [hour, minute] = time.split(':').map(Number);
   return hour * 60 + (minute || 0);
@@ -61,23 +63,70 @@ function extractTime(row: Record<string, unknown>, itemCount: number): string | 
   return null;
 }
 
+function buildPseFilterUrl(filter: string): string {
+  // API PSE odrzuca wariant generowany przez URLSearchParams, w którym
+  // `$filter` staje się `%24filter`, a spacje są kodowane jako `+`.
+  // Pozostawiamy nazwę parametru literalnie i kodujemy spacje jako `%20`.
+  return `${PSE_ENDPOINT}?$filter=${filter.replace(/ /g, '%20')}`;
+}
+
+function extractRows(payload: unknown): Record<string, unknown>[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const value = (payload as Record<string, unknown>).value;
+  return Array.isArray(value) ? value as Record<string, unknown>[] : [];
+}
+
+function rowMatchesDate(row: Record<string, unknown>, date: string): boolean {
+  const businessDate = String(row.business_date ?? row.doba ?? '');
+  if (businessDate) return businessDate.startsWith(date);
+
+  const dateTime = String(row.dtime ?? row.dtime_utc ?? row.data_czas ?? '');
+  return dateTime.startsWith(date);
+}
+
+async function fetchPseRows(url: string, date: string): Promise<Record<string, unknown>[]> {
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(12_000)
+  });
+
+  const text = await response.text();
+  let payload: unknown = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    console.error('PSE API request failed', {
+      status: response.status,
+      url,
+      response: payload ?? text.slice(0, 500)
+    });
+    return [];
+  }
+
+  return extractRows(payload).filter((row) => rowMatchesDate(row, date));
+}
+
 async function fetchRawPseRows(date: string): Promise<Record<string, unknown>[]> {
   const filters = [
     `business_date eq '${date}'`,
+    `business_date eq ${date}`,
     `doba eq '${date}'`
   ];
 
   for (const filter of filters) {
-    const params = new URLSearchParams({ '$filter': filter });
-    const response = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' }
-    });
-
-    if (!response.ok) continue;
-    const payload = await response.json();
-    if (Array.isArray(payload.value) && payload.value.length > 0) {
-      return payload.value;
+    try {
+      const rows = await fetchPseRows(buildPseFilterUrl(filter), date);
+      if (rows.length > 0) return rows;
+    } catch (error) {
+      console.error('PSE API connection error', {
+        filter,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
