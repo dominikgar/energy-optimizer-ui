@@ -51,19 +51,25 @@ function isValidTime(value: string): boolean {
   return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
 }
 
+function noStoreJson(body: unknown, status = 200): NextResponse {
+  const response = NextResponse.json(body, { status });
+  response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return response;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticateApiSubscription(request);
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status });
+      return noStoreJson({ error: auth.error }, auth.status);
     }
 
     const params = request.nextUrl.searchParams;
     const day = params.get('day') || 'today';
     if (!['today', 'tomorrow'].includes(day)) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: 'Parametr day musi mieć wartość today albo tomorrow.' },
-        { status: 400 }
+        400
       );
     }
 
@@ -72,14 +78,14 @@ export async function GET(request: NextRequest) {
     const contiguous = parseBoolean(params.get('contiguous'), true);
     const earliestStart = params.get('earliest_start') || '00:00';
     const latestEnd = params.get('latest_end') || '24:00';
-    const deviceName = (params.get('device_name') || 'device').trim().slice(0, 80);
+    const deviceName = (params.get('device_name') || 'device').trim().slice(0, 80) || 'device';
 
     const validationError = energy.error || power.error || contiguous.error
       || (!isValidTime(earliestStart) ? 'Nieprawidłowy parametr earliest_start. Użyj formatu HH:MM.' : null)
       || (!isValidTime(latestEnd) ? 'Nieprawidłowy parametr latest_end. Użyj formatu HH:MM lub 24:00.' : null);
 
     if (validationError || energy.value === null || power.value === null) {
-      return NextResponse.json({ error: validationError }, { status: 400 });
+      return noStoreJson({ error: validationError }, 400);
     }
 
     const generatedAt = new Date();
@@ -90,9 +96,9 @@ export async function GET(request: NextRequest) {
 
     const forecast = await fetchPseDayForecast(date);
     if (!forecast) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: `Brak danych giełdowych PSE dla dnia ${date}.` },
-        { status: 404 }
+        404
       );
     }
 
@@ -112,7 +118,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!result.feasible) {
-      return NextResponse.json({
+      return noStoreJson({
         status: 'unfeasible',
         data_source: 'PSE RCE',
         market_price_only: true,
@@ -122,15 +128,21 @@ export async function GET(request: NextRequest) {
         day,
         device_name: deviceName,
         trigger_automation: false,
-        reason: result.reason,
+        recommendation_reason: result.reason,
+        active_slot: null,
         request: {
           energy_kwh: energy.value,
           power_kw: power.value,
           earliest_start: earliestStart,
           latest_end: latestEnd,
           contiguous: contiguous.value
+        },
+        schedule: {
+          feasible: false,
+          reason: result.reason,
+          slots: []
         }
-      }, { status: 422 });
+      });
     }
 
     const currentTime = `${String(localNow.getHours()).padStart(2, '0')}:${String(localNow.getMinutes()).padStart(2, '0')}`;
@@ -143,7 +155,7 @@ export async function GET(request: NextRequest) {
     const triggerAutomation = Boolean(activeSlot);
     const validUntil = new Date(generatedAt.getTime() + RESPONSE_TTL_SECONDS * 1000);
 
-    const response = NextResponse.json({
+    return noStoreJson({
       status: 'success',
       data_source: 'PSE RCE',
       market_price_only: true,
@@ -199,11 +211,8 @@ export async function GET(request: NextRequest) {
           : Number(result.savingsVsEarliest.toFixed(4))
       }
     });
-
-    response.headers.set('Cache-Control', 'private, no-store, max-age=0');
-    return response;
   } catch (error) {
     console.error('Device schedule API error:', error);
-    return NextResponse.json({ error: 'Wewnętrzny błąd serwera.' }, { status: 500 });
+    return noStoreJson({ error: 'Wewnętrzny błąd serwera.' }, 500);
   }
 }
