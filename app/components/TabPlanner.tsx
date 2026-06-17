@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { scheduleDevice } from '../../lib/deviceScheduler';
 
 interface PlannerForecast {
@@ -36,9 +36,25 @@ function formatTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
+function timeToMinutes(time: string): number {
+  if (time === '24:00') return 1440;
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function crossesMidnight(earliestStart: string, latestEnd: string): boolean {
+  return latestEnd !== '24:00' && timeToMinutes(latestEnd) <= timeToMinutes(earliestStart);
+}
+
+function formatDateLabel(date: string | null): string {
+  if (!date) return '';
+  const [year, month, day] = date.split('-');
+  return `${day}.${month}.${year}`;
+}
+
 function buildTimeOptions(intervalMinutes: number, includeEnd: boolean): string[] {
   const options: string[] = [];
-  const start = includeEnd ? intervalMinutes : 0;
+  const start = includeEnd ? 0 : 0;
   const end = includeEnd ? 1440 : 1440 - intervalMinutes;
   for (let minute = start; minute <= end; minute += intervalMinutes) {
     options.push(formatTime(minute));
@@ -75,29 +91,67 @@ function PlannerContent({
   const [contiguous, setContiguous] = useState(PRESETS.boiler.contiguous);
   const [earliestStart, setEarliestStart] = useState('00:00');
   const [latestEnd, setLatestEnd] = useState('24:00');
+  const [dayAfterTomorrowForecast, setDayAfterTomorrowForecast] = useState<PlannerForecast | null>(null);
+  const [futureForecastLoading, setFutureForecastLoading] = useState(false);
+  const [futureForecastError, setFutureForecastError] = useState<string | null>(null);
+  const requestedFutureForecast = useRef(false);
 
   const activeForecast = day === 'today' ? todayForecast : tomorrowForecast;
+  const overnight = crossesMidnight(earliestStart, latestEnd);
+  const nextForecast = day === 'today' ? tomorrowForecast : dayAfterTomorrowForecast;
   const intervalMinutes = activeForecast?.intervalMinutes || 60;
   const earliestOptions = buildTimeOptions(intervalMinutes, false);
   const latestOptions = buildTimeOptions(intervalMinutes, true);
 
+  useEffect(() => {
+    if (day !== 'tomorrow' || !overnight || dayAfterTomorrowForecast || requestedFutureForecast.current) return;
+
+    requestedFutureForecast.current = true;
+    setFutureForecastLoading(true);
+    setFutureForecastError(null);
+
+    fetch('/api/planner/forecast?offset=2', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Nie udało się pobrać danych na pojutrze.');
+        return payload as PlannerForecast;
+      })
+      .then(setDayAfterTomorrowForecast)
+      .catch((error) => setFutureForecastError(error instanceof Error ? error.message : String(error)))
+      .finally(() => setFutureForecastLoading(false));
+  }, [day, overnight, dayAfterTomorrowForecast]);
+
+  const missingNextDayData = overnight && !nextForecast;
+
   const result = useMemo(() => {
-    if (!activeForecast) return null;
-    return scheduleDevice(
-      activeForecast.prices.map((item) => ({
+    if (!activeForecast || missingNextDayData) return null;
+
+    const intervals = activeForecast.prices.map((item) => ({
+      start: item.time,
+      pricePerKwh: item.pricePerKwh,
+      durationMinutes: activeForecast.intervalMinutes,
+      dayOffset: 0,
+      date: activeForecast.date
+    }));
+
+    if (overnight && nextForecast) {
+      intervals.push(...nextForecast.prices.map((item) => ({
         start: item.time,
         pricePerKwh: item.pricePerKwh,
-        durationMinutes: activeForecast.intervalMinutes
-      })),
-      {
-        energyRequiredKwh: energy,
-        maxPowerKw: power,
-        earliestStart,
-        latestEnd,
-        requireContiguous: contiguous
-      }
-    );
-  }, [activeForecast, contiguous, earliestStart, energy, latestEnd, power]);
+        durationMinutes: nextForecast.intervalMinutes,
+        dayOffset: 1,
+        date: nextForecast.date
+      })));
+    }
+
+    return scheduleDevice(intervals, {
+      energyRequiredKwh: energy,
+      maxPowerKw: power,
+      earliestStart,
+      latestEnd,
+      requireContiguous: contiguous
+    });
+  }, [activeForecast, contiguous, earliestStart, energy, latestEnd, missingNextDayData, nextForecast, overnight, power]);
 
   const selectPreset = (value: DevicePreset) => {
     const selected = PRESETS[value];
@@ -107,13 +161,19 @@ function PlannerContent({
     setContiguous(selected.contiguous);
   };
 
+  const dateRange = activeForecast
+    ? overnight
+      ? `${formatDateLabel(activeForecast.date)} → ${nextForecast ? formatDateLabel(nextForecast.date) : 'następny dzień'}`
+      : formatDateLabel(activeForecast.date)
+    : '—';
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h2 className="text-3xl font-black">Planer urządzeń</h2>
           <p className="text-slate-500 mt-2 text-sm leading-6 max-w-3xl">
-            Podaj energię i ograniczenia urządzenia. Plan opiera się na surowych cenach RCE; opłaty sprzedawcy i dystrybucji nie zmieniają kolejności interwałów, jeśli są stałe za kWh.
+            Podaj energię i ograniczenia urządzenia. Godzina zakończenia wcześniejsza od startu oznacza kolejny dzień, np. 22:00–06:00.
           </p>
         </div>
         <div className="flex bg-slate-200/50 p-1 rounded-xl">
@@ -173,6 +233,7 @@ function PlannerContent({
                 <select value={latestEnd} onChange={(event) => setLatestEnd(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal bg-white">
                   {latestOptions.map((time) => <option key={time} value={time}>{time}</option>)}
                 </select>
+                {overnight && <span className="mt-1 block text-xs font-normal text-blue-600">Ta godzina przypada następnego dnia.</span>}
               </label>
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
                 <span className="text-sm font-bold text-slate-700 block">Minimalny czas pracy</span>
@@ -181,12 +242,24 @@ function PlannerContent({
             </div>
           </div>
 
+          {futureForecastLoading && missingNextDayData && (
+            <div className="p-5 bg-blue-50 text-blue-800 rounded-2xl border border-blue-200 font-semibold">
+              Pobieram ceny na kolejny dzień…
+            </div>
+          )}
+
+          {!futureForecastLoading && missingNextDayData && (
+            <div className="p-5 bg-amber-50 text-amber-900 rounded-2xl border border-amber-200 font-semibold">
+              {futureForecastError || 'PSE nie opublikowało jeszcze cen na kolejny dzień. Nocny harmonogram będzie dostępny po publikacji danych.'}
+            </div>
+          )}
+
           {result?.feasible ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="p-6 bg-white rounded-2xl border border-slate-200">
-                  <span className="text-xs uppercase font-bold text-slate-400">Dzień</span>
-                  <strong className="block mt-2 text-xl">{activeForecast.label} · {activeForecast.date}</strong>
+                  <span className="text-xs uppercase font-bold text-slate-400">Zakres dat</span>
+                  <strong className="block mt-2 text-xl">{dateRange}</strong>
                 </div>
                 <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
                   <span className="text-xs uppercase font-bold text-emerald-600">Koszt energii RCE</span>
@@ -217,9 +290,9 @@ function PlannerContent({
                     </thead>
                     <tbody>
                       {result.slots.map((slot, index) => (
-                        <tr key={`${slot.start}-${index}`} className="border-b border-slate-100 last:border-0">
-                          <td className="py-4 pr-4 font-bold">{slot.start}</td>
-                          <td className="py-4 pr-4">{slot.end}</td>
+                        <tr key={`${slot.startDate}-${slot.start}-${index}`} className="border-b border-slate-100 last:border-0">
+                          <td className="py-4 pr-4 font-bold">{formatDateLabel(slot.startDate)} {slot.start}</td>
+                          <td className="py-4 pr-4">{formatDateLabel(slot.endDate)} {slot.end}</td>
                           <td className="py-4 pr-4">{slot.energyKwh.toFixed(3)} kWh</td>
                           <td className="py-4 pr-4">{slot.pricePerKwh.toFixed(4)} PLN/kWh</td>
                           <td className="py-4 font-bold">{slot.cost.toFixed(3)} PLN</td>
@@ -230,11 +303,11 @@ function PlannerContent({
                 </div>
               </div>
             </>
-          ) : (
+          ) : result ? (
             <div className="p-6 bg-red-50 text-red-800 rounded-2xl border border-red-200 font-semibold">
-              {result?.reason || 'Nie udało się przygotować harmonogramu.'}
+              {result.reason || 'Nie udało się przygotować harmonogramu.'}
             </div>
-          )}
+          ) : null}
         </>
       )}
     </div>
