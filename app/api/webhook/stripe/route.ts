@@ -1,18 +1,11 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import crypto from 'crypto';
-// @ts-ignore
-import { Pool } from 'pg';
+import { pool } from '../../../../lib/db';
 
 export const dynamic = 'force-dynamic';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16'
-});
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
 });
 
 function isEntitled(status: Stripe.Subscription.Status): boolean {
@@ -56,26 +49,22 @@ export async function POST(req: Request) {
         if (!userId || !subscriptionId) break;
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const generatedApiKey = `eo_live_${crypto.randomBytes(16).toString('hex')}`;
-
         await pool.query(
           `INSERT INTO user_subscriptions
-             (user_id, stripe_customer_id, stripe_subscription_id, plan_type, is_active, current_period_end, api_key)
-           VALUES ($1, $2, $3, 'pro', $4, $5, $6)
+             (user_id, stripe_customer_id, stripe_subscription_id, plan_type, is_active, current_period_end)
+           VALUES ($1, $2, $3, 'pro', $4, $5)
            ON CONFLICT (user_id) DO UPDATE
            SET stripe_customer_id = EXCLUDED.stripe_customer_id,
                stripe_subscription_id = EXCLUDED.stripe_subscription_id,
                plan_type = 'pro',
                is_active = EXCLUDED.is_active,
-               current_period_end = EXCLUDED.current_period_end,
-               api_key = COALESCE(user_subscriptions.api_key, EXCLUDED.api_key)`,
+               current_period_end = EXCLUDED.current_period_end`,
           [
             userId,
             customerId || null,
             subscriptionId,
             isEntitled(subscription.status),
-            new Date(subscription.current_period_end * 1000),
-            generatedApiKey
+            new Date(subscription.current_period_end * 1000)
           ]
         );
         break;
