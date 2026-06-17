@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import ApiDeviceConfigurator from './ApiDeviceConfigurator';
 
 interface Props {
   userApiKey: string | null;
@@ -13,10 +14,6 @@ interface AccessState {
   prefix: string | null;
   token: string | null;
   error: string | null;
-}
-
-function CodeBlock({ children }: { children: string }) {
-  return <pre className="overflow-x-auto whitespace-pre rounded-2xl bg-slate-900 p-6 font-mono text-sm leading-relaxed text-emerald-400">{children}</pre>;
 }
 
 export default function TabApi({ userApiKey }: Props) {
@@ -105,40 +102,13 @@ export default function TabApi({ userApiKey }: Props) {
     );
   }
 
-  const exampleToken = access.token || '<TWÓJ_TOKEN>';
-  const scheduleUrl = 'https://energyoptimizer.pl/api/v1/schedule/device';
-  const curlExample = `curl -G "${scheduleUrl}" \\
-  -H "Authorization: Bearer ${exampleToken}" \\
-  --data-urlencode "day=today" \\
-  --data-urlencode "device_name=boiler" \\
-  --data-urlencode "energy_kwh=6" \\
-  --data-urlencode "power_kw=2" \\
-  --data-urlencode "earliest_start=00:00" \\
-  --data-urlencode "latest_end=07:00" \\
-  --data-urlencode "contiguous=true"`;
-
-  const homeAssistant = `rest:
-  - resource: "${scheduleUrl}"
-    headers:
-      Authorization: "Bearer ${exampleToken}"
-    params:
-      day: today
-      device_name: boiler
-      energy_kwh: 6
-      power_kw: 2
-      earliest_start: "00:00"
-      latest_end: "07:00"
-      contiguous: true
-    scan_interval: 300
-    binary_sensor:
-      - name: "EO Boiler Should Run"
-        value_template: "{{ value_json.trigger_automation }}"`;
-
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <h2 className="mb-3 text-2xl font-black">API automatyzacji</h2>
-        <p className="mb-6 max-w-4xl leading-relaxed text-slate-600">Token jest traktowany jak hasło. Nowy token jest przechowywany wyłącznie jako skrót i po wygenerowaniu można go zobaczyć tylko raz.</p>
+        <p className="mb-6 max-w-4xl leading-relaxed text-slate-600">
+          Token jest traktowany jak hasło. Generator konfiguracji poniżej celowo używa znacznika zamiast wstawiać token do kopiowanego kodu.
+        </p>
         {access.error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{access.error}</div>}
 
         {access.mode === 'none' ? (
@@ -158,18 +128,11 @@ export default function TabApi({ userApiKey }: Props) {
         )}
       </section>
 
-      {access.mode !== 'none' && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h3 className="mb-4 text-2xl font-black">Konfiguracja Home Assistanta</h3>
-          {!access.token && <p className="mb-4 text-sm text-amber-700">W przykładach użyto <code>&lt;TWÓJ_TOKEN&gt;</code>.</p>}
-          <h4 className="mb-3 font-black">Test cURL</h4>
-          <CodeBlock>{curlExample}</CodeBlock>
-          <h4 className="mb-3 mt-8 font-black">configuration.yaml</h4>
-          <CodeBlock>{homeAssistant}</CodeBlock>
-        </section>
-      )}
+      {access.mode !== 'none' && <ApiDeviceConfigurator />}
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Po rotacji poprzedni token przestaje działać natychmiast. Limit ochronny wynosi 120 zapytań na pięć minut na ciepłą instancję.</div>
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+        Po rotacji poprzedni token przestaje działać natychmiast. Limit ochronny wynosi 120 zapytań na pięć minut na ciepłą instancję.
+      </div>
     </div>
   );
 }
