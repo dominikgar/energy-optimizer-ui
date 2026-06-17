@@ -46,12 +46,28 @@ function buildTimeOptions(intervalMinutes: number, includeEnd: boolean): string[
   return options;
 }
 
-export default function TabPlanner({
-  isPremiumUser,
+function LockedPlanner() {
+  return (
+    <div className="bg-white p-8 md:p-12 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/40 text-center">
+      <div className="text-5xl mb-5">⚡</div>
+      <h2 className="text-3xl font-black mb-3">Planer urządzeń</h2>
+      <p className="text-slate-500 max-w-xl mx-auto mb-8 leading-relaxed">
+        Planer wyznacza najtańsze interwały pracy dla bojlera, ładowania EV lub innego odbiornika z uwzględnieniem wymaganej energii, mocy i terminu zakończenia.
+      </p>
+      <form action="/api/checkout_sessions" method="POST">
+        <button type="submit" className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-full shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 transition-colors">
+          Odblokuj w PRO
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function PlannerContent({
   todayForecast,
   tomorrowForecast,
   forecastError
-}: TabPlannerProps) {
+}: Omit<TabPlannerProps, 'isPremiumUser'>) {
   const [day, setDay] = useState<'today' | 'tomorrow'>(todayForecast ? 'today' : 'tomorrow');
   const [preset, setPreset] = useState<DevicePreset>('boiler');
   const [energy, setEnergy] = useState(PRESETS.boiler.energy);
@@ -59,23 +75,6 @@ export default function TabPlanner({
   const [contiguous, setContiguous] = useState(PRESETS.boiler.contiguous);
   const [earliestStart, setEarliestStart] = useState('00:00');
   const [latestEnd, setLatestEnd] = useState('24:00');
-
-  if (!isPremiumUser) {
-    return (
-      <div className="bg-white p-8 md:p-12 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/40 text-center">
-        <div className="text-5xl mb-5">⚡</div>
-        <h2 className="text-3xl font-black mb-3">Planer urządzeń</h2>
-        <p className="text-slate-500 max-w-xl mx-auto mb-8 leading-relaxed">
-          Planer wyznacza najtańsze interwały pracy dla bojlera, ładowania EV lub innego odbiornika z uwzględnieniem wymaganej energii, mocy i terminu zakończenia.
-        </p>
-        <form action="/api/checkout_sessions" method="POST">
-          <button type="submit" className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-full shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 transition-colors">
-            Odblokuj w PRO
-          </button>
-        </form>
-      </div>
-    );
-  }
 
   const activeForecast = day === 'today' ? todayForecast : tomorrowForecast;
   const intervalMinutes = activeForecast?.intervalMinutes || 60;
@@ -239,5 +238,16 @@ export default function TabPlanner({
         </>
       )}
     </div>
+  );
+}
+
+export default function TabPlanner(props: TabPlannerProps) {
+  if (!props.isPremiumUser) return <LockedPlanner />;
+  return (
+    <PlannerContent
+      todayForecast={props.todayForecast}
+      tomorrowForecast={props.tomorrowForecast}
+      forecastError={props.forecastError}
+    />
   );
 }
