@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { auth } from '@clerk/nextjs/server';
+import { pool } from '../../../lib/db';
 import { parseConsumptionCsv } from '../../../lib/csvConsumptionParser';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const INSERT_CHUNK_SIZE = 2000;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
 
 export async function POST(req) {
   try {
