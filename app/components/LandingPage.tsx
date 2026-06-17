@@ -1,5 +1,5 @@
 import React from 'react';
-import { SignInButton } from '@clerk/nextjs';
+import Link from 'next/link';
 import Footer from './Footer';
 
 const IconZap = () => (
@@ -27,11 +27,9 @@ export default function LandingPage() {
             <IconZap />
             <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">EnergyOptimizer</span>
           </div>
-          <SignInButton mode="modal">
-            <button className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-bold text-slate-900 shadow-sm transition-colors hover:bg-slate-50">
-              Zaloguj się
-            </button>
-          </SignInButton>
+          <Link href="/sign-in" className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-bold text-slate-900 shadow-sm transition-colors hover:bg-slate-50">
+            Zaloguj się
+          </Link>
         </div>
       </header>
 
@@ -47,11 +45,9 @@ export default function LandingPage() {
             Wgraj historię godzinowego zużycia, porównaj ją z cenami RCE, skonfiguruj ofertę sprzedawcy i wyznacz harmonogram dla bojlera lub ładowania EV. Wynik zależy od Twoich danych i warunków konkretnej oferty.
           </p>
           <div className="mt-10">
-            <SignInButton mode="modal">
-              <button className="rounded-full bg-emerald-500 px-9 py-4 text-lg font-bold text-white shadow-xl shadow-emerald-500/25 transition-all hover:bg-emerald-600 hover:-translate-y-0.5">
-                Rozpocznij darmową analizę
-              </button>
-            </SignInButton>
+            <Link href="/sign-up" className="inline-block rounded-full bg-emerald-500 px-9 py-4 text-lg font-bold text-white shadow-xl shadow-emerald-500/25 transition-all hover:bg-emerald-600 hover:-translate-y-0.5">
+              Rozpocznij darmową analizę
+            </Link>
           </div>
         </section>
 
@@ -112,9 +108,9 @@ export default function LandingPage() {
           <h2 className="text-3xl font-black">Zacznij od własnych danych.</h2>
           <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-300">Darmowa analiza pomoże ocenić potencjał. Decyzję o zmianie taryfy warto oprzeć na pełnym cenniku konkretnego sprzedawcy.</p>
           <div className="mt-8">
-            <SignInButton mode="modal">
-              <button className="rounded-full bg-emerald-500 px-8 py-4 font-bold text-white transition-colors hover:bg-emerald-600">Przejdź do analizy</button>
-            </SignInButton>
+            <Link href="/sign-up" className="inline-block rounded-full bg-emerald-500 px-8 py-4 font-bold text-white transition-colors hover:bg-emerald-600">
+              Przejdź do analizy
+            </Link>
           </div>
         </section>
       </main>
