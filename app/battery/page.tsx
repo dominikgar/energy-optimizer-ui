@@ -9,6 +9,7 @@ import TabBatteryArbitrage from '../components/TabBatteryArbitrage';
 import Footer from '../components/Footer';
 import { pool } from '../../lib/db';
 import { fetchPseDayForecast } from '../../lib/pse';
+import { hasProAccess, hasStalePeriodMetadata } from '../../lib/proAccess';
 
 function formatDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -42,8 +43,10 @@ export default async function BatteryPage() {
       [userId]
     );
     const subscription = rows[0];
-    const expired = subscription?.current_period_end && new Date(subscription.current_period_end) < new Date();
-    isPremiumUser = Boolean(subscription?.is_active && !expired);
+    isPremiumUser = hasProAccess(subscription);
+    if (hasStalePeriodMetadata(subscription)) {
+      console.warn('PRO subscription has stale current_period_end metadata', { userId, area: 'battery' });
+    }
   } catch (error) {
     console.error('Battery subscription error:', error);
   }
