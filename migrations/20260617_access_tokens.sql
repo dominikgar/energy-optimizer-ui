@@ -1,4 +1,5 @@
 BEGIN;
+ALTER TABLE public.user_subscriptions ALTER COLUMN api_key DROP NOT NULL;
 ALTER TABLE public.user_subscriptions ADD COLUMN IF NOT EXISTS access_token_digest TEXT;
 ALTER TABLE public.user_subscriptions ADD COLUMN IF NOT EXISTS access_token_prefix TEXT;
 ALTER TABLE public.user_subscriptions ADD COLUMN IF NOT EXISTS access_token_created_at TIMESTAMPTZ;
