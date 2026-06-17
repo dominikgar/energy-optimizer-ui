@@ -1,149 +1,153 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 // @ts-ignore
 import { Pool } from 'pg';
+import { isTimeInsideWindow } from '../../../../../lib/timeWindow';
 
 export const dynamic = 'force-dynamic';
 
+const TIME_ZONE = 'Europe/Warsaw';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Funkcja pomocnicza do pobierania i przetwarzania danych z PSE dla konkretnego dnia
-async function getDayForecast(targetDateStr: string) {
-  let params = new URLSearchParams({ "$filter": `business_date eq '${targetDateStr}'` });
-  let pseRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
-  
-  let pseJson = pseRes.ok ? await pseRes.json() : { value: [] };
-  
-  if (!pseJson.value || pseJson.value.length === 0) {
-    // Fallback na starszy format zapytania PSE
-    const fallbackParams = new URLSearchParams({ "$filter": `doba eq '${targetDateStr}'` });
-    const fallbackRes = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${fallbackParams.toString()}`, { cache: 'no-store' });
-    pseJson = fallbackRes.ok ? await fallbackRes.json() : { value: [] };
-  }
+function extractTime(row: any, itemCount: number): string | null {
+  const source = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || row.period || row.okres || '');
+  const match = source.match(/(\d{1,2}):(\d{2})/);
+  if (match) return `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
 
-  if (!pseJson.value || pseJson.value.length === 0) {
-    return null; // Brak danych na ten dzień
-  }
-
-  let pricesArr: { time: string, price: number }[] = [];
-  
-  pseJson.value.forEach((row: any) => {
-    const priceKwh = row.rce_pln / 1000;
-    let hour = '??:??';
-    const timeStr = String(row.dtime || row.udtczas || row.udtczas_oreb || row.data_czas || '');
-    const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
-    
-    if (timeMatch) { hour = timeMatch[1]; }
-    else if (row.period !== undefined || row.okres !== undefined) {
-      const p = parseInt(row.period || row.okres);
-      if (p > 25) { 
-        const h = Math.floor((p - 1) / 4);
-        const m = ((p - 1) % 4) * 15;
-        hour = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-      } else { hour = String(p - 1).padStart(2, '0') + ':00'; }
+  const period = Number.parseInt(String(row.period ?? row.okres ?? ''), 10);
+  if (Number.isFinite(period)) {
+    if (itemCount > 30) {
+      const hour = Math.floor((period - 1) / 4);
+      const minute = ((period - 1) % 4) * 15;
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
     }
-    else if (row.godzina !== undefined) { hour = String(row.godzina).padStart(2, '0') + ':00'; }
-    pricesArr.push({ time: hour, price: priceKwh });
-  });
-
-  const isQuarterHourly = pricesArr.length > 30;
-  const elementsIn3Hours = isQuarterHourly ? 12 : 3;
-
-  let bestWindowStart = '';
-  let bestWindowEnd = '';
-  let bestWindowAvgPrice = 9999;
-
-  for (let i = 0; i <= pricesArr.length - elementsIn3Hours; i++) {
-    let sum = 0;
-    for (let j = 0; j < elementsIn3Hours; j++) sum += pricesArr[i + j].price;
-    const avg = sum / elementsIn3Hours;
-
-    if (avg < bestWindowAvgPrice) {
-      bestWindowAvgPrice = avg;
-      bestWindowStart = pricesArr[i].time;
-      let endItem = pricesArr[i + elementsIn3Hours - 1]; 
-      let endHour = parseInt(endItem.time.split(':')[0]);
-      let endMin = parseInt(endItem.time.split(':')[1] || '0', 10);
-      if (isQuarterHourly) { endMin += 15; if (endMin >= 60) { endHour += 1; endMin = 0; } } else { endHour += 1; }
-      if (endHour >= 24) endHour = 0;
-      bestWindowEnd = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
-    }
+    return `${String(Math.max(0, period - 1)).padStart(2, '0')}:00`;
   }
 
-  return { pricesArr, bestWindowStart, bestWindowEnd, bestWindowAvgPrice, isQuarterHourly };
+  const hour = Number.parseInt(String(row.godzina ?? ''), 10);
+  return Number.isFinite(hour) ? `${String(Math.max(0, hour - 1)).padStart(2, '0')}:00` : null;
+}
+
+function timeToMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + (minute || 0);
+}
+
+async function getDayForecast(targetDate: string) {
+  const params = new URLSearchParams({ '$filter': `business_date eq '${targetDate}'` });
+  let response = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${params.toString()}`, { cache: 'no-store' });
+  let json = response.ok ? await response.json() : { value: [] };
+
+  if (!Array.isArray(json.value) || json.value.length === 0) {
+    const fallback = new URLSearchParams({ '$filter': `doba eq '${targetDate}'` });
+    response = await fetch(`https://api.raporty.pse.pl/api/rce-pln?${fallback.toString()}`, { cache: 'no-store' });
+    json = response.ok ? await response.json() : { value: [] };
+  }
+
+  if (!Array.isArray(json.value) || json.value.length === 0) return null;
+
+  const prices = json.value
+    .map((row: any) => {
+      const time = extractTime(row, json.value.length);
+      const price = Number(row.rce_pln) / 1000;
+      return time && Number.isFinite(price) ? { time, price } : null;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => timeToMinutes(a.time) - timeToMinutes(b.time));
+
+  const quarterHourly = prices.length > 30;
+  const windowSize = quarterHourly ? 12 : 3;
+  if (prices.length < windowSize) return null;
+
+  let start = '';
+  let end = '';
+  let average = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index <= prices.length - windowSize; index++) {
+    const window = prices.slice(index, index + windowSize);
+    const candidate = window.reduce((sum: number, item: any) => sum + item.price, 0) / windowSize;
+    if (candidate >= average) continue;
+
+    average = candidate;
+    start = window[0].time;
+    const endMinutes = (timeToMinutes(window[window.length - 1].time) + (quarterHourly ? 15 : 60)) % 1440;
+    end = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+  }
+
+  return { prices, start, end, average, quarterHourly };
+}
+
+function formatDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // 0. WERYFIKACJA KLUCZA
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: "Brak autoryzacji." }, { status: 401 });
-    }
-    const apiKey = authHeader.split(' ')[1];
-    const { rows } = await pool.query('SELECT is_active FROM user_subscriptions WHERE api_key = $1', [apiKey]);
-    if (rows.length === 0 || !rows[0].is_active) {
-      return NextResponse.json({ error: "Nieprawidłowy klucz lub brak subskrypcji PRO." }, { status: 403 });
+    const header = request.headers.get('authorization');
+    if (!header?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Brak autoryzacji.' }, { status: 401 });
     }
 
-    // 1. Ustalenie dat (Dzisiaj i Jutro)
-    const polandTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Warsaw"}));
-    
-    const todayStr = `${polandTime.getFullYear()}-${String(polandTime.getMonth() + 1).padStart(2, '0')}-${String(polandTime.getDate()).padStart(2, '0')}`;
-    
-    const tomorrowTime = new Date(polandTime);
-    tomorrowTime.setDate(tomorrowTime.getDate() + 1);
-    const tomorrowStr = `${tomorrowTime.getFullYear()}-${String(tomorrowTime.getMonth() + 1).padStart(2, '0')}-${String(tomorrowTime.getDate()).padStart(2, '0')}`;
+    const token = header.slice(7).trim();
+    const { rows } = await pool.query(
+      'SELECT is_active, current_period_end FROM user_subscriptions WHERE api_key = $1',
+      [token]
+    );
+    const subscription = rows[0];
+    const expired = subscription?.current_period_end && new Date(subscription.current_period_end) < new Date();
+    if (!subscription?.is_active || expired) {
+      return NextResponse.json({ error: 'Nieprawidłowy klucz lub brak aktywnej subskrypcji PRO.' }, { status: 403 });
+    }
 
-    // 2. Równoległe pobieranie danych
+    const generatedAt = new Date();
+    const localNow = new Date(generatedAt.toLocaleString('en-US', { timeZone: TIME_ZONE }));
+    const today = formatDate(localNow);
+    const tomorrowDate = new Date(localNow);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = formatDate(tomorrowDate);
+
     const [todayData, tomorrowData] = await Promise.all([
-      getDayForecast(todayStr),
-      getDayForecast(tomorrowStr)
+      getDayForecast(today),
+      getDayForecast(tomorrow)
     ]);
 
     if (!todayData) {
-      return NextResponse.json({ error: "Brak danych giełdowych z PSE na dzień dzisiejszy." }, { status: 404 });
+      return NextResponse.json({ error: 'Brak danych giełdowych PSE na dziś.' }, { status: 404 });
     }
 
-    // 3. Obliczanie obecnej ceny "w tej minucie" (tylko dla Dzisiaj)
-    const currentH = String(polandTime.getHours()).padStart(2, '0');
-    const currentM = polandTime.getMinutes();
-    let roundedM = '00';
-    if (todayData.isQuarterHourly) {
-        if (currentM >= 45) roundedM = '45';
-        else if (currentM >= 30) roundedM = '30';
-        else if (currentM >= 15) roundedM = '15';
-    }
-    const currentTimeStr = `${currentH}:${roundedM}`;
-    const currentPriceObj = todayData.pricesArr.find(p => p.time === currentTimeStr);
-    const currentPricePln = currentPriceObj ? currentPriceObj.price : (todayData.pricesArr.length > 0 ? todayData.pricesArr[0].price : 0);
+    const intervalMinute = todayData.quarterHourly ? Math.floor(localNow.getMinutes() / 15) * 15 : 0;
+    const currentInterval = `${String(localNow.getHours()).padStart(2, '0')}:${String(intervalMinute).padStart(2, '0')}`;
+    const currentPrice = todayData.prices.find((item: any) => item.time === currentInterval)?.price ?? null;
+    const trigger = currentPrice !== null && isTimeInsideWindow(currentInterval, todayData.start, todayData.end);
+    const validUntil = new Date(generatedAt.getTime() + (todayData.quarterHourly ? 15 : 60) * 60 * 1000);
 
-    // 4. Budowanie i zwrócenie wzbogaconej odpowiedzi
     return NextResponse.json({
-      status: "success",
-      data_source: "PSE",
-      device_type: "heat_pump_or_ev",
-      
-      // Dane na dzisiaj
-      date: todayStr,
-      recommended_start: todayData.bestWindowStart,
-      recommended_end: todayData.bestWindowEnd,
-      avg_price_pln: Number(todayData.bestWindowAvgPrice.toFixed(4)),
-      current_price_pln: Number(currentPricePln.toFixed(4)), 
-      trigger_automation: true,
-
-      // Dane na jutro (mogą być nullem rano, przed publikacją przez PSE)
-      tomorrow_data_available: !!tomorrowData,
-      tomorrow_date: tomorrowStr,
-      tomorrow_recommended_start: tomorrowData ? tomorrowData.bestWindowStart : null,
-      tomorrow_recommended_end: tomorrowData ? tomorrowData.bestWindowEnd : null,
-      tomorrow_avg_price_pln: tomorrowData ? Number(tomorrowData.bestWindowAvgPrice.toFixed(4)) : null
+      status: 'success',
+      data_source: 'PSE RCE',
+      timezone: TIME_ZONE,
+      generated_at: generatedAt.toISOString(),
+      valid_until: validUntil.toISOString(),
+      market_price_only: true,
+      date: today,
+      recommended_start: todayData.start,
+      recommended_end: todayData.end,
+      avg_price_pln: Number(todayData.average.toFixed(4)),
+      current_price_pln: currentPrice === null ? null : Number(currentPrice.toFixed(4)),
+      current_interval: currentInterval,
+      trigger_automation: trigger,
+      recommendation_reason: trigger
+        ? 'Aktualny interwał znajduje się w rekomendowanym oknie.'
+        : 'Aktualny interwał znajduje się poza rekomendowanym oknem.',
+      tomorrow_data_available: Boolean(tomorrowData),
+      tomorrow_date: tomorrow,
+      tomorrow_recommended_start: tomorrowData?.start ?? null,
+      tomorrow_recommended_end: tomorrowData?.end ?? null,
+      tomorrow_avg_price_pln: tomorrowData ? Number(tomorrowData.average.toFixed(4)) : null
     });
-
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "Wewnętrzny błąd serwera." }, { status: 500 });
+    console.error('Forecast API Error:', error);
+    return NextResponse.json({ error: 'Wewnętrzny błąd serwera.' }, { status: 500 });
   }
 }
