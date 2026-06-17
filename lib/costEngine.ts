@@ -1,3 +1,5 @@
+import './timezone';
+
 export interface ConsumptionPricePoint {
   kwh: number;
   marketPricePerKwh: number;
