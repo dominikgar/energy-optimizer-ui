@@ -12,6 +12,9 @@ export default function Footer() {
           <Link href="/comfort" className="font-bold text-orange-600 hover:text-orange-700 transition-colors">
             Komfort cieplny 🌡️
           </Link>
+          <Link href="/battery" className="font-bold text-violet-600 hover:text-violet-700 transition-colors">
+            Magazyn i PV 🔋
+          </Link>
           <Link href="/faq" className="text-slate-600 hover:text-emerald-600 transition-colors">
             FAQ
           </Link>
