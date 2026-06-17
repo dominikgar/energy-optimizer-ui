@@ -1,8 +1,10 @@
 export type ApiDevicePresetId = 'boiler' | 'ev' | 'dishwasher' | 'custom';
+export type ApiScheduleDay = 'today' | 'tomorrow';
 
 export interface ApiDeviceConfig {
   id: ApiDevicePresetId;
   label: string;
+  day: ApiScheduleDay;
   deviceName: string;
   sensorName: string;
   energyKwh: number;
@@ -16,6 +18,7 @@ export const API_DEVICE_PRESETS: Record<ApiDevicePresetId, ApiDeviceConfig> = {
   boiler: {
     id: 'boiler',
     label: 'Bojler',
+    day: 'today',
     deviceName: 'boiler',
     sensorName: 'EO Boiler Should Run',
     energyKwh: 6,
@@ -27,6 +30,7 @@ export const API_DEVICE_PRESETS: Record<ApiDevicePresetId, ApiDeviceConfig> = {
   ev: {
     id: 'ev',
     label: 'Samochód elektryczny',
+    day: 'today',
     deviceName: 'ev_charger',
     sensorName: 'EO EV Should Run',
     energyKwh: 20,
@@ -38,6 +42,7 @@ export const API_DEVICE_PRESETS: Record<ApiDevicePresetId, ApiDeviceConfig> = {
   dishwasher: {
     id: 'dishwasher',
     label: 'Zmywarka / pralka',
+    day: 'today',
     deviceName: 'dishwasher',
     sensorName: 'EO Dishwasher Should Run',
     energyKwh: 1.5,
@@ -49,6 +54,7 @@ export const API_DEVICE_PRESETS: Record<ApiDevicePresetId, ApiDeviceConfig> = {
   custom: {
     id: 'custom',
     label: 'Urządzenie własne',
+    day: 'today',
     deviceName: 'custom_device',
     sensorName: 'EO Custom Device Should Run',
     energyKwh: 5,
@@ -63,7 +69,7 @@ export function buildScheduleCurl(token: string, config: ApiDeviceConfig): strin
   const scheduleUrl = 'https://energyoptimizer.pl/api/v1/schedule/device';
   return `curl -G "${scheduleUrl}" \\
   -H "Authorization: Bearer ${token}" \\
-  --data-urlencode "day=today" \\
+  --data-urlencode "day=${config.day}" \\
   --data-urlencode "device_name=${config.deviceName}" \\
   --data-urlencode "energy_kwh=${config.energyKwh}" \\
   --data-urlencode "power_kw=${config.powerKw}" \\
@@ -79,7 +85,7 @@ export function buildHomeAssistantYaml(token: string, config: ApiDeviceConfig): 
     headers:
       Authorization: "Bearer ${token}"
     params:
-      day: today
+      day: ${config.day}
       device_name: ${config.deviceName}
       energy_kwh: ${config.energyKwh}
       power_kw: ${config.powerKw}
