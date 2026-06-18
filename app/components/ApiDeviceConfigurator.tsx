@@ -82,6 +82,10 @@ export default function ApiDeviceConfigurator() {
         Generator celowo nie wstawia tokenu automatycznie. Zastąp znacznik &lt;TWÓJ_TOKEN&gt; wartością przechowywaną w Home Assistant.
       </p>
 
+      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+        Konfiguracja tworzy dwie encje: binary sensor sterujący automatyzacją oraz sensor z harmonogramem i diagnostyką. Gdy PSE nie opublikowało jeszcze cen potrzebnych dla okna nocnego, encje pozostają dostępne, automatyzacja ma stan <strong>off</strong>, a sensor pokazuje <strong>Oczekiwanie na ceny PSE</strong>.
+      </div>
+
       <div className="mt-7 grid gap-6 xl:grid-cols-2">
         <div><div className="mb-2 flex justify-between"><strong>configuration.yaml</strong><button type="button" onClick={() => copy('yaml', yaml)} className="text-sm font-bold text-emerald-700">{copied === 'yaml' ? 'Skopiowano' : 'Kopiuj'}</button></div><pre className="overflow-x-auto whitespace-pre rounded-2xl bg-slate-900 p-5 text-sm text-emerald-400">{yaml}</pre></div>
         <div><div className="mb-2 flex justify-between"><strong>Test cURL</strong><button type="button" onClick={() => copy('curl', curl)} className="text-sm font-bold text-emerald-700">{copied === 'curl' ? 'Skopiowano' : 'Kopiuj'}</button></div><pre className="overflow-x-auto whitespace-pre rounded-2xl bg-slate-900 p-5 text-sm text-emerald-400">{curl}</pre></div>
