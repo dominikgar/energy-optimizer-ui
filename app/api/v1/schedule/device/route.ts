@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { handleDeviceScheduleRequest } from '../../../../../lib/deviceScheduleApi';
+import { handleDeviceScheduleRequest } from '../../../../../lib/deviceScheduleApiV2';
 import { createRequestId, recordAppEvent } from '../../../../../lib/appEvents';
 
 export const dynamic = 'force-dynamic';

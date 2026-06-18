@@ -33,6 +33,17 @@ test('Home Assistant YAML uses a valid REST structure', () => {
   assert.match(yaml, /Authorization: "Bearer secret"/);
 });
 
+test('Home Assistant YAML keeps sensors available while waiting for PSE prices', () => {
+  const yaml = buildHomeAssistantYaml('secret', API_DEVICE_PRESETS.dishwasher);
+
+  assert.match(yaml, /waiting_for_prices/);
+  assert.match(yaml, /Oczekiwanie na ceny PSE/);
+  assert.match(yaml, /- missing_price_dates/);
+  assert.match(yaml, /- retry_after/);
+  assert.match(yaml, /- retry_after_seconds/);
+  assert.match(yaml, /value_json\.status in \['success', 'unfeasible', 'waiting_for_prices'\]/);
+});
+
 test('custom config is reflected in cURL and YAML', () => {
   const config = {
     ...API_DEVICE_PRESETS.custom,
