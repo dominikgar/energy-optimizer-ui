@@ -7,35 +7,26 @@ on:
       - main
 
 jobs:
-  collect-errors:
+  verify:
     runs-on: ubuntu-latest
-    outputs:
-      errors: ${{ steps.collect.outputs.errors }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          show-progress: false
+          node-version: '24'
+          cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund > /dev/null 2>&1
+        run: npm install --no-audit --no-fund
       - name: Run tests
-        run: npm test > /dev/null 2>&1
-      - name: Collect TypeScript errors
-        id: collect
-        run: |
-          npx tsc --noEmit --pretty false > type-errors.log 2>&1 || true
-          errors=$(grep 'error TS' type-errors.log | head -n 20 | python3 -c 'import json,sys; print(json.dumps([line.strip()[:220] for line in sys.stdin]))')
-          if [ "$errors" = "[]" ]; then errors='["no TypeScript errors"]'; fi
-          echo "errors=$errors" >> "$GITHUB_OUTPUT"
-
-  report-errors:
-    needs: collect-errors
-    strategy:
-      fail-fast: false
-      matrix:
-        error: ${{ fromJSON(needs.collect-errors.outputs.errors) }}
-    name: ${{ matrix.error }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Report
-        run: exit 1
+        run: npm test
+      - name: Build application
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+          CLERK_SECRET_KEY: sk_test_placeholder
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          NEXT_PUBLIC_BASE_URL: http://localhost:3000
