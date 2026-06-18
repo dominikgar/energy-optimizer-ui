@@ -70,7 +70,11 @@ export async function authenticateApiSubscription(request: Request): Promise<Api
     await pool.query(
       `UPDATE user_subscriptions
        SET access_token_last_used_at = NOW()
-       WHERE user_id = $1`,
+       WHERE user_id = $1
+         AND (
+           access_token_last_used_at IS NULL
+           OR access_token_last_used_at < NOW() - INTERVAL '15 minutes'
+         )`,
       [subscription.user_id]
     );
   }

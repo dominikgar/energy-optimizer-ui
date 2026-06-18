@@ -50,6 +50,10 @@ export default function DashboardsHelpPage() {
             </Info>
           </div>
 
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-sm leading-6 text-violet-950">
+            <strong>Widok także w Home Assistant:</strong> w sekcji API automatyzacji możesz wygenerować lekkie sensory z oszczędnością łączną i miesięczną, energią, liczbą cykli oraz statusem aktywnego wykonania. Pełna historia pozostaje w EnergyOptimizer, więc Home Assistant nie zapisuje jej wielokrotnie w atrybutach encji.
+          </div>
+
           <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm leading-6 text-blue-950">
             <strong>Najdokładniejszy wariant:</strong> użyj narastającego licznika energii w kWh. Estymacja z mocy i czasu jest oznaczana w raporcie jako mniej dokładna.
           </div>

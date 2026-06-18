@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import ApiDeviceConfigurator from './ApiDeviceConfigurator';
+import SavingsSummaryConfigurator from './SavingsSummaryConfigurator';
 
 interface Props {
   userApiKey: string | null;
@@ -128,7 +129,12 @@ export default function TabApi({ userApiKey }: Props) {
         )}
       </section>
 
-      {access.mode !== 'none' && <ApiDeviceConfigurator />}
+      {access.mode !== 'none' && (
+        <>
+          <ApiDeviceConfigurator />
+          <SavingsSummaryConfigurator />
+        </>
+      )}
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
         Po rotacji poprzedni token przestaje działać natychmiast. Limit ochronny wynosi 120 zapytań na pięć minut na ciepłą instancję.
