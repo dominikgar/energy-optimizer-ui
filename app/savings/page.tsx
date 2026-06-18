@@ -122,17 +122,17 @@ export default async function SavingsPage() {
         data = {
           allTime: summary(allTimeResult.rows[0]),
           month: summary(monthResult.rows[0]),
-          devices: devicesResult.rows.map((row) => ({
+          devices: devicesResult.rows.map((row: Record<string, unknown>) => ({
             ...summary(row),
             deviceName: String(row.device_name)
           })),
-          daily: dailyResult.rows.map((row) => ({
+          daily: dailyResult.rows.map((row: Record<string, unknown>) => ({
             date: String(row.date),
             runs: Number(row.runs || 0),
             energyKwh: Number(row.energy_kwh || 0),
             savingsPln: Number(row.savings_pln || 0)
           })),
-          reports: reportsResult.rows.map((row) => ({
+          reports: reportsResult.rows.map((row: Record<string, any>) => ({
             id: row.id,
             deviceName: String(row.device_name),
             startedAt: row.started_at,
@@ -145,7 +145,7 @@ export default async function SavingsPage() {
             energySource: row.metadata?.energy_source || null,
             estimated: row.metadata?.energy_estimated === true
           })),
-          executions: executionsResult.rows.map((row) => ({
+          executions: executionsResult.rows.map((row: Record<string, any>) => ({
             executionId: String(row.execution_id),
             deviceName: String(row.device_name),
             status: String(row.status),
