@@ -29,22 +29,8 @@ jobs:
           STRIPE_SECRET_KEY: sk_test_placeholder
           STRIPE_WEBHOOK_SECRET: whsec_placeholder
           NEXT_PUBLIC_BASE_URL: http://localhost:3000
-      - name: Error file - device execution API
+      - name: Show compiler error
         if: steps.build.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "lib/deviceExecutionApi.ts" build.log
-      - name: Error file - savings page
-        if: steps.build.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "app/savings/page.tsx" build.log
-      - name: Error file - savings component
-        if: steps.build.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "app/components/TabSavings.tsx" build.log
-      - name: Error file - execution route
-        if: steps.build.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "app/api/v1/savings/execution/route.ts" build.log
-      - name: Fail when build failed
-        if: steps.build.outcome == 'failure'
-        run: exit 1
+        run: |
+          grep -n -A 14 -B 4 "Type error" build.log || tail -n 80 build.log
+          exit 1
