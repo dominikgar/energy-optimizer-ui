@@ -19,6 +19,10 @@ type EventRow = {
   resolved_at: Date | null;
 };
 
+type LevelCountRow = { level: string; count: string };
+type SourceCountRow = { source: string; count: string };
+type CountRow = { count: string };
+
 function formatDate(value: Date | string | null): string {
   if (!value) return '—';
   return new Date(value).toLocaleString('pl-PL', {
@@ -48,20 +52,20 @@ export default async function DiagnosticsPage() {
 
   try {
     const [eventsResult, levelsResult, sourcesResult, unresolvedResult, subscriptionsResult] = await Promise.all([
-      pool.query<EventRow>(`
+      pool.query(`
         SELECT id, created_at, level, source, event_type, message,
                user_id, request_id, metadata, resolved_at
         FROM app_events
         ORDER BY created_at DESC
         LIMIT 100
       `),
-      pool.query<{ level: string; count: string }>(`
+      pool.query(`
         SELECT level, COUNT(*)::text AS count
         FROM app_events
         WHERE created_at >= NOW() - INTERVAL '24 hours'
         GROUP BY level
       `),
-      pool.query<{ source: string; count: string }>(`
+      pool.query(`
         SELECT source, COUNT(*)::text AS count
         FROM app_events
         WHERE created_at >= NOW() - INTERVAL '24 hours'
@@ -69,7 +73,7 @@ export default async function DiagnosticsPage() {
         ORDER BY COUNT(*) DESC
         LIMIT 10
       `),
-      pool.query<{ count: string }>(`
+      pool.query(`
         SELECT COUNT(*)::text AS count
         FROM app_events
         WHERE resolved_at IS NULL AND level IN ('error', 'critical')
@@ -90,11 +94,15 @@ export default async function DiagnosticsPage() {
       `)
     ]);
 
-    events = eventsResult.rows;
-    levelCounts = Object.fromEntries(levelsResult.rows.map((row) => [row.level, Number(row.count)]));
-    sourceCounts = sourcesResult.rows.map((row) => ({ source: row.source, count: Number(row.count) }));
-    unresolvedCount = Number(unresolvedResult.rows[0]?.count || 0);
-    inconsistentSubscriptions = subscriptionsResult.rows;
+    events = eventsResult.rows as EventRow[];
+    const levelRows = levelsResult.rows as LevelCountRow[];
+    const sourceRows = sourcesResult.rows as SourceCountRow[];
+    const unresolvedRows = unresolvedResult.rows as CountRow[];
+
+    levelCounts = Object.fromEntries(levelRows.map((row) => [row.level, Number(row.count)]));
+    sourceCounts = sourceRows.map((row) => ({ source: row.source, count: Number(row.count) }));
+    unresolvedCount = Number(unresolvedRows[0]?.count || 0);
+    inconsistentSubscriptions = subscriptionsResult.rows as Array<Record<string, unknown>>;
   } catch (error) {
     databaseError = error instanceof Error ? error.message : String(error);
   }
