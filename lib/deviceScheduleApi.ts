@@ -3,6 +3,7 @@ import { authenticateApiSubscription } from './apiSubscription';
 import { scheduleDevice } from './deviceScheduler';
 import { fetchPseDayForecast } from './pse';
 import { addDays, crossesMidnight, isCurrentInsideSlot, resolveBaseDate } from './overnightWindow';
+import { buildWaitingForPricesPayload } from './waitingForPrices';
 
 const TIME_ZONE = 'Europe/Warsaw';
 const RESPONSE_TTL_SECONDS = 300;
@@ -78,15 +79,39 @@ export async function handleDeviceScheduleRequest(request: NextRequest): Promise
     const overnight = crossesMidnight(earliestStart, latestEnd);
     const baseDate = resolveBaseDate(currentDate, currentTime, day, earliestStart, latestEnd);
     const nextDate = addDays(baseDate, 1);
+    const requestData = {
+      energy_kwh: energy.value,
+      power_kw: power.value,
+      earliest_start: earliestStart,
+      latest_end: latestEnd,
+      contiguous: contiguous.value,
+      crosses_midnight: overnight
+    };
 
     const [forecast, nextForecast] = await Promise.all([
       fetchPseDayForecast(baseDate),
       overnight ? fetchPseDayForecast(nextDate) : Promise.resolve(null)
     ]);
 
-    if (!forecast) return json({ error: `Brak danych giełdowych PSE dla dnia ${baseDate}.` }, 404);
-    if (overnight && !nextForecast) {
-      return json({ error: `Brak danych PSE dla kolejnego dnia ${nextDate}, wymaganych przez okno nocne.` }, 404);
+    const missingPriceDates = [
+      !forecast ? baseDate : null,
+      overnight && !nextForecast ? nextDate : null
+    ].filter((date): date is string => Boolean(date));
+
+    if (missingPriceDates.length > 0) {
+      return json(buildWaitingForPricesPayload({
+        generatedAt,
+        timezone: TIME_ZONE,
+        baseDate,
+        windowEndDate: overnight ? nextDate : baseDate,
+        day,
+        deviceName,
+        currentDate,
+        currentTime,
+        missingPriceDates,
+        overnight,
+        request: requestData
+      }));
     }
 
     const intervals = forecast.prices.map((item) => ({
@@ -114,15 +139,6 @@ export async function handleDeviceScheduleRequest(request: NextRequest): Promise
       latestEnd,
       requireContiguous: contiguous.value
     });
-
-    const requestData = {
-      energy_kwh: energy.value,
-      power_kw: power.value,
-      earliest_start: earliestStart,
-      latest_end: latestEnd,
-      contiguous: contiguous.value,
-      crosses_midnight: overnight
-    };
 
     if (!result.feasible) {
       return json({
