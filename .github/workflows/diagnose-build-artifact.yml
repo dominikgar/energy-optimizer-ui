@@ -1,0 +1,26 @@
+name: Diagnose Build Artifact
+
+on:
+  pull_request:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: npm install --no-audit --no-fund --silent >/dev/null 2>&1
+      - name: Capture build log
+        run: npm run build > build.log 2>&1 || true
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+          CLERK_SECRET_KEY: sk_test_placeholder
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
