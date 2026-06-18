@@ -7,8 +7,10 @@ on:
       - main
 
 jobs:
-  verify:
+  collect-errors:
     runs-on: ubuntu-latest
+    outputs:
+      errors: ${{ steps.collect.outputs.errors }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,46 +20,22 @@ jobs:
         run: npm install --no-audit --no-fund > /dev/null 2>&1
       - name: Run tests
         run: npm test > /dev/null 2>&1
-      - name: Type check
-        id: typecheck
-        continue-on-error: true
-        run: npx tsc --noEmit --pretty false > type-errors.log 2>&1
-      - name: Errors in device execution API
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "^lib/deviceExecutionApi.ts" type-errors.log
-      - name: Errors in savings page
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "^app/savings/page.tsx" type-errors.log
-      - name: Errors in savings component
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "^app/components/TabSavings.tsx" type-errors.log
-      - name: Error TS2322 assignment
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "error TS2322" type-errors.log
-      - name: Error TS2345 argument
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "error TS2345" type-errors.log
-      - name: Error TS2339 property
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "error TS2339" type-errors.log
-      - name: Error TS18047 null
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "error TS18047" type-errors.log
-      - name: Error TS18048 undefined
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "error TS18048" type-errors.log
-      - name: Error TS2769 overload
-        if: steps.typecheck.outcome == 'failure'
-        continue-on-error: true
-        run: grep -q "error TS2769" type-errors.log
-      - name: Fail on type errors
-        if: steps.typecheck.outcome == 'failure'
+      - name: Collect TypeScript errors
+        id: collect
+        run: |
+          npx tsc --noEmit --pretty false > type-errors.log 2>&1 || true
+          errors=$(grep 'error TS' type-errors.log | head -n 20 | python3 -c 'import json,sys; print(json.dumps([line.strip()[:220] for line in sys.stdin]))')
+          if [ "$errors" = "[]" ]; then errors='["no TypeScript errors"]'; fi
+          echo "errors=$errors" >> "$GITHUB_OUTPUT"
+
+  report-errors:
+    needs: collect-errors
+    strategy:
+      fail-fast: false
+      matrix:
+        error: ${{ fromJSON(needs.collect-errors.outputs.errors) }}
+    name: ${{ matrix.error }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
         run: exit 1
