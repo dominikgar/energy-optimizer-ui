@@ -112,7 +112,7 @@ export function buildHomeAssistantYaml(token: string, config: ApiDeviceConfig): 
       - name: "${config.sensorName}"
         unique_id: ${config.deviceName}_should_run
         availability: >-
-          {{ value_json.error is not defined }}
+          {{ value_json.status in ['success', 'unfeasible', 'waiting_for_prices'] }}
         value_template: >-
           {{ value_json.trigger_automation | default(false) | bool }}
 
@@ -122,6 +122,8 @@ export function buildHomeAssistantYaml(token: string, config: ApiDeviceConfig): 
         value_template: >-
           {% if value_json.error is defined %}
             Błąd API
+          {% elif value_json.status == 'waiting_for_prices' %}
+            Oczekiwanie na ceny PSE
           {% else %}
             {{ value_json.recommendation_reason | default('Brak rekomendacji') }}
           {% endif %}
@@ -132,6 +134,10 @@ export function buildHomeAssistantYaml(token: string, config: ApiDeviceConfig): 
           - active_slot
           - schedule
           - valid_until
+          - waiting_for_prices
+          - missing_price_dates
+          - retry_after
+          - retry_after_seconds
           - device_name
           - generated_at`;
 }
