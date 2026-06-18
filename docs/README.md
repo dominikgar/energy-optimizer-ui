@@ -25,4 +25,4 @@ Generator konfiguracji raportowania oszczędności znajduje się w aplikacji w s
 API automatyzacji → Raportowanie faktycznych oszczędności
 ```
 
-Po wdrożeniu warto sprawdzić publiczną stronę `/dashboardy`, panel użytkownika `/savings` oraz panel administratora `/admin/diagnostics`.
+Po każdym wdrożeniu warto sprawdzić publiczną stronę `/dashboardy`, panel użytkownika `/savings` oraz panel administratora `/admin/diagnostics`.
