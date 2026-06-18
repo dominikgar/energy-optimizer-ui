@@ -14,11 +14,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           show-progress: false
-      - name: Verify
-        run: |
-          npm install --no-audit --no-fund > /dev/null 2>&1
-          npm test > /dev/null 2>&1
-          npm run build
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund > /dev/null 2>&1
+      - name: Run tests
+        run: npm test > /dev/null 2>&1
+      - name: Build application
+        id: build
+        continue-on-error: true
+        run: npx next build > build.log 2>&1
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
@@ -26,3 +29,22 @@ jobs:
           STRIPE_SECRET_KEY: sk_test_placeholder
           STRIPE_WEBHOOK_SECRET: whsec_placeholder
           NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      - name: Error file - device execution API
+        if: steps.build.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "lib/deviceExecutionApi.ts" build.log
+      - name: Error file - savings page
+        if: steps.build.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "app/savings/page.tsx" build.log
+      - name: Error file - savings component
+        if: steps.build.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "app/components/TabSavings.tsx" build.log
+      - name: Error file - execution route
+        if: steps.build.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "app/api/v1/savings/execution/route.ts" build.log
+      - name: Fail when build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
