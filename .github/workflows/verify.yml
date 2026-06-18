@@ -18,31 +18,46 @@ jobs:
         run: npm install --no-audit --no-fund > /dev/null 2>&1
       - name: Run tests
         run: npm test > /dev/null 2>&1
-      - name: Build application
-        id: build
+      - name: Type check
+        id: typecheck
         continue-on-error: true
-        run: npx next build > build.log 2>&1
-        env:
-          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-          CLERK_SECRET_KEY: sk_test_placeholder
-          STRIPE_SECRET_KEY: sk_test_placeholder
-          STRIPE_WEBHOOK_SECRET: whsec_placeholder
-          NEXT_PUBLIC_BASE_URL: http://localhost:3000
-      - name: Type error in device execution API
-        if: steps.build.outcome == 'failure'
+        run: npx tsc --noEmit --pretty false > type-errors.log 2>&1
+      - name: Errors in device execution API
+        if: steps.typecheck.outcome == 'failure'
         continue-on-error: true
-        run: grep -B 6 -A 12 "Type error" build.log | grep -q "lib/deviceExecutionApi.ts"
-      - name: Type error in savings page
-        if: steps.build.outcome == 'failure'
+        run: grep -q "^lib/deviceExecutionApi.ts" type-errors.log
+      - name: Errors in savings page
+        if: steps.typecheck.outcome == 'failure'
         continue-on-error: true
-        run: grep -B 6 -A 12 "Type error" build.log | grep -q "app/savings/page.tsx"
-      - name: Type error in savings component
-        if: steps.build.outcome == 'failure'
+        run: grep -q "^app/savings/page.tsx" type-errors.log
+      - name: Errors in savings component
+        if: steps.typecheck.outcome == 'failure'
         continue-on-error: true
-        run: grep -B 6 -A 12 "Type error" build.log | grep -q "app/components/TabSavings.tsx"
-      - name: Type error elsewhere
-        if: steps.build.outcome == 'failure'
-        run: |
-          grep -B 6 -A 12 "Type error" build.log || tail -n 50 build.log
-          exit 1
+        run: grep -q "^app/components/TabSavings.tsx" type-errors.log
+      - name: Error TS2322 assignment
+        if: steps.typecheck.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "error TS2322" type-errors.log
+      - name: Error TS2345 argument
+        if: steps.typecheck.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "error TS2345" type-errors.log
+      - name: Error TS2339 property
+        if: steps.typecheck.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "error TS2339" type-errors.log
+      - name: Error TS18047 null
+        if: steps.typecheck.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "error TS18047" type-errors.log
+      - name: Error TS18048 undefined
+        if: steps.typecheck.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "error TS18048" type-errors.log
+      - name: Error TS2769 overload
+        if: steps.typecheck.outcome == 'failure'
+        continue-on-error: true
+        run: grep -q "error TS2769" type-errors.log
+      - name: Fail on type errors
+        if: steps.typecheck.outcome == 'failure'
+        run: exit 1
