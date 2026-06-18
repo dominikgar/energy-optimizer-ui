@@ -12,6 +12,9 @@ export default function Footer() {
           <Link href="/savings" className="text-slate-600 hover:text-emerald-600 transition-colors">
             Oszczędności
           </Link>
+          <Link href="/dashboardy" className="text-slate-600 hover:text-emerald-600 transition-colors">
+            Jak działają dashboardy
+          </Link>
           <Link href="/faq" className="text-slate-600 hover:text-emerald-600 transition-colors">
             FAQ
           </Link>
