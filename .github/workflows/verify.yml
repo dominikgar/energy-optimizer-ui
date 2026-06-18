@@ -22,7 +22,9 @@ jobs:
       - name: Run tests
         run: npm test
       - name: Build application
-        run: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tail -n 80
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
