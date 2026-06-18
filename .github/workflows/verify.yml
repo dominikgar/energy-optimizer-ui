@@ -2,19 +2,27 @@ name: Verify UI
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Diagnose build
-        run: |
-          set -o pipefail
-          git clone -q --depth 1 --branch "$GITHUB_HEAD_REF" https://github.com/dominikgar/energy-optimizer-ui.git app
-          cd app
-          npm install --no-audit --no-fund --silent >/dev/null 2>&1
-          npm test >/dev/null 2>&1
-          npm run build 2>&1 | tail -n 60
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run tests
+        run: npm test
+      - name: Build application
+        run: npm run build
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
