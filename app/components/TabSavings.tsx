@@ -86,7 +86,8 @@ function number(value: number, digits = 2): string {
 
 function dateTime(value: string | Date | null): string {
   if (!value) return '—';
-  return new Date(value).toLocaleString('pl-PL', {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleString('pl-PL', {
     timeZone: 'Europe/Warsaw',
     dateStyle: 'short',
     timeStyle: 'short'
