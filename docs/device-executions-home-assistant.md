@@ -160,3 +160,13 @@ Ponowne wysłanie akcji `stop` dla tego samego urządzenia finalizuje raport po 
 1. `energy_kwh` przekazane przy akcji `stop`.
 2. Różnica `meter_end_kwh - meter_start_kwh`.
 3. Estymacja `power_kw × czas`.
+
+## Podgląd wyników
+
+Po zapisaniu pierwszych cykli wyniki są dostępne w aplikacji pod adresem:
+
+```text
+https://www.energyoptimizer.pl/savings
+```
+
+Widok pokazuje oszczędność łączną i miesięczną, koszt rzeczywisty, energię, wyniki według urządzeń oraz historię wykonań.
