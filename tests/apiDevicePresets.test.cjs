@@ -2,6 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   API_DEVICE_PRESETS,
+  EXECUTION_REPORTING_DEFAULTS,
+  buildHomeAssistantExecutionYaml,
   buildHomeAssistantYaml,
   buildScheduleCurl
 } = require('../lib/apiDevicePresets.ts');
@@ -42,6 +44,38 @@ test('Home Assistant YAML keeps sensors available while waiting for PSE prices',
   assert.match(yaml, /- retry_after/);
   assert.match(yaml, /- retry_after_seconds/);
   assert.match(yaml, /value_json\.status in \['success', 'unfeasible', 'waiting_for_prices'\]/);
+});
+
+test('meter execution reporting uses start and end meter readings', () => {
+  const yaml = buildHomeAssistantExecutionYaml(
+    'secret',
+    API_DEVICE_PRESETS.dishwasher,
+    EXECUTION_REPORTING_DEFAULTS.dishwasher
+  );
+
+  assert.match(yaml, /api\/v1\/savings\/execution/);
+  assert.match(yaml, /Authorization: "Bearer secret"/);
+  assert.match(yaml, /"action": "start"/);
+  assert.match(yaml, /"action": "stop"/);
+  assert.match(yaml, /meter_start_kwh/);
+  assert.match(yaml, /meter_end_kwh/);
+  assert.match(yaml, /sensor\.dishwasher_energy_total/);
+  assert.match(yaml, /entity_id: switch\.dishwasher/);
+  assert.match(yaml, /service: rest_command\.eo_dishwasher_execution_start/);
+  assert.match(yaml, /for: "00:01:00"/);
+});
+
+test('estimated execution reporting uses configured power without meter fields', () => {
+  const yaml = buildHomeAssistantExecutionYaml(
+    'secret',
+    API_DEVICE_PRESETS.custom,
+    EXECUTION_REPORTING_DEFAULTS.custom
+  );
+
+  assert.match(yaml, /"power_kw": 2/);
+  assert.doesNotMatch(yaml, /meter_start_kwh/);
+  assert.doesNotMatch(yaml, /meter_end_kwh/);
+  assert.match(yaml, /reference_rate_pln_kwh/);
 });
 
 test('custom config is reflected in cURL and YAML', () => {
