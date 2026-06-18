@@ -205,14 +205,16 @@ async function stopExecution(
     const durationHours = (endedAt.getTime() - startedAt.getTime()) / 3_600_000;
     const meterEnd = execution.meter_end_kwh ?? parseFiniteNumber(body.meter_end_kwh);
     const reportedEnergy = execution.reported_energy_kwh ?? parseFiniteNumber(body.energy_kwh);
-    const powerKw = parseFiniteNumber(body.power_kw) ?? Number(execution.estimated_power_kw || 0) || null;
+    const requestedPowerKw = parseFiniteNumber(body.power_kw);
+    const storedPowerKw = Number(execution.estimated_power_kw || 0);
+    const powerKw = requestedPowerKw ?? (storedPowerKw > 0 ? storedPowerKw : null);
 
     const energy = execution.energy_kwh
       ? {
           valid: true,
           error: null,
           energyKwh: Number(execution.energy_kwh),
-          source: execution.energy_source,
+          source: execution.energy_source as 'reported' | 'meter_delta' | 'power_duration',
           estimated: execution.energy_source === 'power_duration'
         }
       : resolveExecutionEnergy({
