@@ -27,4 +27,4 @@ API automatyzacji → Raportowanie faktycznych oszczędności
 API automatyzacji → Sensory podsumowania oszczędności
 ```
 
-Po każdym wdrożeniu warto sprawdzić publiczną stronę `/dashboardy`, panel użytkownika `/savings`, endpoint `/api/v1/savings/summary` oraz panel administratora `/admin/diagnostics`.
+Po każdym wdrożeniu warto sprawdzić publiczną stronę `/dashboardy`, panel użytkownika `/savings`, ekran API automatyzacji, endpoint `/api/v1/savings/summary` oraz panel administratora `/admin/diagnostics`.
