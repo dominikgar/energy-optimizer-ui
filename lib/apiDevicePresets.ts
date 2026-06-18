@@ -65,41 +65,73 @@ export const API_DEVICE_PRESETS: Record<ApiDevicePresetId, ApiDeviceConfig> = {
   }
 };
 
+const SCHEDULE_URL = 'https://www.energyoptimizer.pl/api/v1/schedule/device';
+
+function buildQuery(config: ApiDeviceConfig): string {
+  const params = new URLSearchParams({
+    day: config.day,
+    device_name: config.deviceName,
+    energy_kwh: String(config.energyKwh),
+    power_kw: String(config.powerKw),
+    earliest_start: config.earliestStart,
+    latest_end: config.latestEnd,
+    contiguous: String(config.contiguous)
+  });
+  return params.toString();
+}
+
+function scheduleSensorName(sensorName: string): string {
+  return sensorName.includes('Should Run')
+    ? sensorName.replace('Should Run', 'Schedule')
+    : `${sensorName} Schedule`;
+}
+
 export function buildScheduleCurl(token: string, config: ApiDeviceConfig): string {
-  const scheduleUrl = 'https://energyoptimizer.pl/api/v1/schedule/device';
-  return `curl -G "${scheduleUrl}" \\
+  return `curl -i \\
   -H "Authorization: Bearer ${token}" \\
-  --data-urlencode "day=${config.day}" \\
-  --data-urlencode "device_name=${config.deviceName}" \\
-  --data-urlencode "energy_kwh=${config.energyKwh}" \\
-  --data-urlencode "power_kw=${config.powerKw}" \\
-  --data-urlencode "earliest_start=${config.earliestStart}" \\
-  --data-urlencode "latest_end=${config.latestEnd}" \\
-  --data-urlencode "contiguous=${config.contiguous}"`;
+  -H "Accept: application/json" \\
+  "${SCHEDULE_URL}?${buildQuery(config)}"`;
 }
 
 export function buildHomeAssistantYaml(token: string, config: ApiDeviceConfig): string {
-  const scheduleUrl = 'https://energyoptimizer.pl/api/v1/schedule/device';
+  const url = `${SCHEDULE_URL}?${buildQuery(config)}`;
+  const detailsName = scheduleSensorName(config.sensorName);
+  const detailsId = `${config.deviceName}_schedule`;
+
   return `rest:
-  - resource: "${scheduleUrl}"
+  - resource: >-
+      ${url}
+    method: GET
     headers:
       Authorization: "Bearer ${token}"
-    params:
-      day: ${config.day}
-      device_name: ${config.deviceName}
-      energy_kwh: ${config.energyKwh}
-      power_kw: ${config.powerKw}
-      earliest_start: "${config.earliestStart}"
-      latest_end: "${config.latestEnd}"
-      contiguous: ${config.contiguous}
+      Accept: "application/json"
     scan_interval: 300
+    timeout: 20
+
     binary_sensor:
       - name: "${config.sensorName}"
         unique_id: ${config.deviceName}_should_run
-        value_template: "{{ value_json.trigger_automation }}"
+        availability: >-
+          {{ value_json.error is not defined }}
+        value_template: >-
+          {{ value_json.trigger_automation | default(false) | bool }}
+
+    sensor:
+      - name: "${detailsName}"
+        unique_id: ${detailsId}
+        value_template: >-
+          {% if value_json.error is defined %}
+            Błąd API
+          {% else %}
+            {{ value_json.recommendation_reason | default('Brak rekomendacji') }}
+          {% endif %}
         json_attributes:
+          - status
+          - error
           - recommendation_reason
           - active_slot
           - schedule
-          - valid_until`;
+          - valid_until
+          - device_name
+          - generated_at`;
 }
