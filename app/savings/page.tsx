@@ -17,7 +17,7 @@ function summary(row: Record<string, unknown> | undefined) {
   };
 }
 
-const EMPTY_DATA = {
+const EMPTY_DATA: any = {
   allTime: summary(undefined),
   month: summary(undefined),
   devices: [],
@@ -29,7 +29,7 @@ const EMPTY_DATA = {
 export default async function SavingsPage() {
   const { userId } = auth();
   let isPremiumUser = false;
-  let data = EMPTY_DATA;
+  let data: any = EMPTY_DATA;
   let loadError: string | null = null;
 
   if (userId) {
