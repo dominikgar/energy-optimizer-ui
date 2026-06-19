@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { pool } from '../../lib/db';
+import { resolveMaxRunningHours } from '../../lib/deviceExecutionLifecycle';
 import TabSavings from '../components/TabSavings';
 import Footer from '../components/Footer';
 
@@ -23,7 +24,8 @@ const EMPTY_DATA: any = {
   devices: [],
   daily: [],
   reports: [],
-  executions: []
+  executions: [],
+  maxRunningHours: resolveMaxRunningHours(process.env.EXECUTION_MAX_RUNNING_HOURS)
 };
 
 export default async function SavingsPage() {
@@ -110,11 +112,21 @@ export default async function SavingsPage() {
           ),
           pool.query(
             `SELECT execution_id, device_name, status, started_at, ended_at,
-                    energy_kwh, energy_source
+                    energy_kwh, energy_source, metadata, updated_at
              FROM energy_device_executions
              WHERE user_id = $1
-               AND status IN ('running', 'awaiting_prices')
-             ORDER BY started_at DESC`,
+               AND (
+                 status IN ('running', 'awaiting_prices')
+                 OR (status = 'cancelled' AND updated_at >= NOW() - INTERVAL '7 days')
+               )
+             ORDER BY
+               CASE status
+                 WHEN 'awaiting_prices' THEN 1
+                 WHEN 'running' THEN 2
+                 ELSE 3
+               END,
+               updated_at DESC
+             LIMIT 30`,
             [userId]
           )
         ]);
@@ -152,8 +164,13 @@ export default async function SavingsPage() {
             startedAt: row.started_at,
             endedAt: row.ended_at,
             energyKwh: row.energy_kwh === null ? null : Number(row.energy_kwh),
-            energySource: row.energy_source || null
-          }))
+            energySource: row.energy_source || null,
+            updatedAt: row.updated_at,
+            finalizationError: row.metadata?.finalization_error || null,
+            cancellationReason: row.metadata?.cancellation_reason || null,
+            cancelledAutomatically: row.metadata?.cancelled_automatically === true
+          })),
+          maxRunningHours: resolveMaxRunningHours(process.env.EXECUTION_MAX_RUNNING_HOURS)
         };
       }
     } catch (error) {
