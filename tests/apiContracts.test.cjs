@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const apiSchema = require('../contracts/api-v1.schema.json');
 const {
   API_VERSION,
   errorCodeForHttpStatus,
@@ -32,6 +33,12 @@ function sharedScheduleInput() {
     }
   };
 }
+
+test('formal schema allows domain errors to match an execution and error contract', () => {
+  assert.equal(apiSchema.oneOf, undefined);
+  assert.equal(Array.isArray(apiSchema.anyOf), true);
+  assert.equal(apiSchema.anyOf.length, 4);
+});
 
 test('adds API version and stable error codes without removing legacy fields', () => {
   const payload = versionApiPayload({ error: 'Brak autoryzacji.' }, 401);
