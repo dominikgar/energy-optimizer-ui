@@ -127,7 +127,7 @@
       "additionalProperties": true
     }
   },
-  "oneOf": [
+  "anyOf": [
     { "$ref": "#/$defs/error" },
     { "$ref": "#/$defs/schedule" },
     { "$ref": "#/$defs/execution" },
