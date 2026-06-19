@@ -1,3 +1,5 @@
+import { API_VERSION } from './apiContract';
+
 export const WAITING_FOR_PRICES_RETRY_SECONDS = 300;
 
 export interface WaitingForPricesPayloadInput {
@@ -29,6 +31,7 @@ export function buildWaitingForPricesPayload(input: WaitingForPricesPayloadInput
   const recommendationReason = `Oczekiwanie na publikację cen PSE dla ${dateDescription}${overnightDescription}. Harmonogram zostanie wyliczony automatycznie po kolejnym odświeżeniu.`;
 
   return {
+    api_version: API_VERSION,
     status: 'waiting_for_prices',
     data_source: 'PSE RCE',
     market_price_only: true,
