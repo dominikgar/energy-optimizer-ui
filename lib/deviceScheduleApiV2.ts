@@ -6,13 +6,15 @@ import { addDays, crossesMidnight, isCurrentInsideSlot, resolveBaseDate } from '
 import { parseDeviceScheduleRequest, localDateTime } from './deviceScheduleRequest';
 import { buildUnfeasiblePayload, buildSuccessPayload } from './deviceSchedulePayloads';
 import { buildWaitingForPricesPayload } from './waitingForPrices';
+import { versionApiPayload } from './apiContract';
 
 const TIME_ZONE = 'Europe/Warsaw';
 const RESPONSE_TTL_SECONDS = 300;
 
 function json(body: unknown, status = 200): NextResponse {
-  const response = NextResponse.json(body, { status });
+  const response = NextResponse.json(versionApiPayload(body, status), { status });
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  if (status === 429) response.headers.set('Retry-After', '300');
   return response;
 }
 

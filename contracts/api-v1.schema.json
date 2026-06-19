@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.energyoptimizer.pl/contracts/api-v1.schema.json",
+  "title": "EnergyOptimizer API v1",
+  "type": "object",
+  "$defs": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "error": {
+      "type": "object",
+      "required": ["api_version", "error", "error_code"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/version" },
+        "status": { "type": "string" },
+        "error": { "type": "string", "minLength": 1 },
+        "error_code": {
+          "enum": [
+            "VALIDATION_ERROR",
+            "AUTHENTICATION_REQUIRED",
+            "SUBSCRIPTION_REQUIRED",
+            "NOT_FOUND",
+            "CONFLICT",
+            "RATE_LIMITED",
+            "INTERNAL_ERROR",
+            "HTTP_ERROR"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "schedule": {
+      "type": "object",
+      "required": [
+        "api_version",
+        "status",
+        "timezone",
+        "generated_at",
+        "date",
+        "day",
+        "device_name",
+        "trigger_automation",
+        "recommendation_reason",
+        "schedule"
+      ],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/version" },
+        "status": { "enum": ["success", "unfeasible", "waiting_for_prices"] },
+        "timezone": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": "string", "format": "date-time" },
+        "date": { "type": "string", "format": "date" },
+        "window_end_date": { "type": "string", "format": "date" },
+        "day": { "enum": ["today", "tomorrow"] },
+        "device_name": { "type": "string", "minLength": 1 },
+        "trigger_automation": { "type": "boolean" },
+        "recommendation_reason": { "type": "string" },
+        "active_slot": { "type": ["object", "null"] },
+        "schedule": {
+          "type": "object",
+          "required": ["slots"],
+          "properties": {
+            "feasible": { "type": ["boolean", "null"] },
+            "slots": { "type": "array", "items": { "type": "object" } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "execution": {
+      "type": "object",
+      "required": ["api_version", "status", "execution"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/version" },
+        "status": { "enum": ["running", "awaiting_prices", "completed", "cancelled"] },
+        "idempotent": { "type": "boolean" },
+        "retry_after_seconds": { "type": "number", "minimum": 0 },
+        "execution": {
+          "type": "object",
+          "required": ["execution_id", "device_name"],
+          "properties": {
+            "execution_id": { "type": "string", "minLength": 1 },
+            "device_name": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        "report": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "api_version",
+        "status",
+        "currency",
+        "timezone",
+        "total_savings_pln",
+        "total_energy_kwh",
+        "total_cycles",
+        "month_savings_pln",
+        "month_energy_kwh",
+        "month_cycles",
+        "active_executions",
+        "running_executions",
+        "awaiting_price_executions"
+      ],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/version" },
+        "status": { "const": "success" },
+        "currency": { "const": "PLN" },
+        "timezone": { "type": "string" },
+        "total_savings_pln": { "type": "number" },
+        "total_energy_kwh": { "type": "number" },
+        "total_cycles": { "type": "number" },
+        "month_savings_pln": { "type": "number" },
+        "month_energy_kwh": { "type": "number" },
+        "month_cycles": { "type": "number" },
+        "last_cycle_savings_pln": { "type": ["number", "null"] },
+        "last_cycle_energy_kwh": { "type": ["number", "null"] },
+        "active_executions": { "type": "number" },
+        "running_executions": { "type": "number" },
+        "awaiting_price_executions": { "type": "number" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/error" },
+    { "$ref": "#/$defs/schedule" },
+    { "$ref": "#/$defs/execution" },
+    { "$ref": "#/$defs/summary" }
+  ]
+}

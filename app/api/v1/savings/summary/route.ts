@@ -4,12 +4,14 @@ import { pool } from '../../../../../lib/db';
 import { createRequestId, recordAppEvent } from '../../../../../lib/appEvents';
 import { finalizeAwaitingExecutions } from '../../../../../lib/deviceExecutionFinalizer';
 import { cancelStaleRunningExecutions } from '../../../../../lib/deviceExecutionMaintenance';
+import { versionApiPayload } from '../../../../../lib/apiContract';
 
 export const dynamic = 'force-dynamic';
 
 function noStoreJson(body: unknown, status = 200): NextResponse {
-  const response = NextResponse.json(body, { status });
+  const response = NextResponse.json(versionApiPayload(body, status), { status });
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  if (status === 429) response.headers.set('Retry-After', '300');
   return response;
 }
 
