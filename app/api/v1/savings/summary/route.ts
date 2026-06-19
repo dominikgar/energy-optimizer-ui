@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateApiSubscription } from '../../../../../lib/apiSubscription';
 import { pool } from '../../../../../lib/db';
 import { createRequestId, recordAppEvent } from '../../../../../lib/appEvents';
+import { finalizeAwaitingExecutions } from '../../../../../lib/deviceExecutionFinalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,24 @@ export async function GET(request: NextRequest) {
     const auth = await authenticateApiSubscription(request);
     if (!auth.ok || !auth.userId) {
       return noStoreJson({ error: auth.error }, auth.status);
+    }
+
+    try {
+      await finalizeAwaitingExecutions({
+        userId: auth.userId,
+        limit: 5,
+        requestId
+      });
+    } catch (error) {
+      await recordAppEvent({
+        level: 'warning',
+        source: 'savings-summary',
+        eventType: 'summary.finalization_failed',
+        message: 'Podsumowanie działa, ale nie udało się sprawdzić oczekujących cykli.',
+        userId: auth.userId,
+        requestId,
+        metadata: { error }
+      });
     }
 
     const result = await pool.query(
