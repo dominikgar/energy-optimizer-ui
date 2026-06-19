@@ -37,7 +37,7 @@ export async function cancelStaleRunningExecutions(
   const limit = boundedLimit(options.limit);
   const reason = `Automatycznie anulowano cykl aktywny dłużej niż ${maxRunningHours} godzin.`;
 
-  const result = await pool.query<CancelledExecutionRow>(
+  const result = await pool.query(
     `WITH candidates AS (
        SELECT id
        FROM energy_device_executions
@@ -65,7 +65,8 @@ export async function cancelStaleRunningExecutions(
     [maxRunningHours, options.userId || null, limit, reason]
   );
 
-  for (const execution of result.rows) {
+  const cancelledExecutions = result.rows as CancelledExecutionRow[];
+  for (const execution of cancelledExecutions) {
     await recordAppEvent({
       level: 'warning',
       source: 'savings-execution',
@@ -84,8 +85,8 @@ export async function cancelStaleRunningExecutions(
   }
 
   return {
-    scanned: result.rows.length,
-    cancelled: result.rows.length,
+    scanned: cancelledExecutions.length,
+    cancelled: cancelledExecutions.length,
     maxRunningHours
   };
 }
