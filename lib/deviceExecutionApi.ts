@@ -5,6 +5,12 @@ import { pool } from './db';
 import { calculateRealizedSavings } from './realizedSavings';
 import { resolveExecutionEnergy } from './deviceExecutionEnergy';
 import {
+  DeviceExecutionStatus,
+  decideCancelTransition,
+  decideStartCollision,
+  decideStopTransition
+} from './deviceExecutionTransitions';
+import {
   createRequestId,
   recordAppEvent,
   sanitizeEventMetadata
@@ -131,7 +137,12 @@ async function startExecution(
         [userId, deviceName]
       );
       const activeExecution = existing.rows[0] || null;
-      if (!activeExecution) throw error;
+      if (
+        !activeExecution
+        || decideStartCollision(activeExecution.status as DeviceExecutionStatus) !== 'return_existing'
+      ) {
+        throw error;
+      }
 
       await recordAppEvent({
         level: 'info',
@@ -196,7 +207,8 @@ async function stopExecution(
       return noStoreJson({ error: 'Nie znaleziono cyklu urządzenia.' }, 404);
     }
 
-    if (execution.status === 'completed') {
+    const stopDecision = decideStopTransition(execution.status as DeviceExecutionStatus);
+    if (stopDecision === 'return_completed') {
       const report = await client.query(
         `SELECT * FROM energy_savings_reports WHERE id = $1 LIMIT 1`,
         [execution.savings_report_id]
@@ -211,7 +223,7 @@ async function stopExecution(
       });
     }
 
-    if (execution.status === 'cancelled') {
+    if (stopDecision === 'reject_cancelled') {
       await client.query('ROLLBACK');
       return noStoreJson({
         error: 'Cykl został anulowany i nie może zostać zakończony.',
@@ -483,7 +495,8 @@ async function cancelExecution(
       return noStoreJson({ error: 'Nie znaleziono cyklu urządzenia.' }, 404);
     }
 
-    if (execution.status === 'completed') {
+    const cancelDecision = decideCancelTransition(execution.status as DeviceExecutionStatus);
+    if (cancelDecision === 'reject_completed') {
       await client.query('ROLLBACK');
       return noStoreJson({
         error: 'Zakończonego cyklu nie można anulować.',
@@ -492,7 +505,7 @@ async function cancelExecution(
       }, 409);
     }
 
-    if (execution.status === 'cancelled') {
+    if (cancelDecision === 'return_cancelled') {
       await client.query('COMMIT');
       return noStoreJson({
         status: 'cancelled',
