@@ -42,6 +42,10 @@ interface Execution {
   endedAt: string | Date | null;
   energyKwh: number | null;
   energySource: string | null;
+  updatedAt: string | Date;
+  finalizationError: string | null;
+  cancellationReason: string | null;
+  cancelledAutomatically: boolean;
 }
 
 interface DashboardData {
@@ -51,6 +55,7 @@ interface DashboardData {
   daily: DailyStat[];
   reports: SavingsReport[];
   executions: Execution[];
+  maxRunningHours: number;
 }
 
 interface Props {
@@ -67,6 +72,29 @@ const EMPTY_SUMMARY: SavingsSummary = {
   savingsPln: 0,
   estimatedRuns: 0
 };
+
+const EXECUTION_TONES = {
+  blue: {
+    card: 'border-blue-200 bg-white',
+    badge: 'bg-blue-100 text-blue-800',
+    note: 'text-blue-900'
+  },
+  amber: {
+    card: 'border-amber-300 bg-amber-50',
+    badge: 'bg-amber-200 text-amber-900',
+    note: 'text-amber-900'
+  },
+  red: {
+    card: 'border-red-300 bg-red-50',
+    badge: 'bg-red-200 text-red-900',
+    note: 'text-red-900'
+  },
+  slate: {
+    card: 'border-slate-300 bg-slate-50',
+    badge: 'bg-slate-200 text-slate-800',
+    note: 'text-slate-700'
+  }
+} as const;
 
 function money(value: number): string {
   return new Intl.NumberFormat('pl-PL', {
@@ -99,6 +127,48 @@ function sourceLabel(source: string | null): string {
   if (source === 'reported') return 'energia raportowana';
   if (source === 'power_duration') return 'moc × czas';
   return 'raport pełny';
+}
+
+function ageHours(value: string | Date): number {
+  const date = value instanceof Date ? value : new Date(value);
+  const age = (Date.now() - date.getTime()) / 3_600_000;
+  return Number.isFinite(age) ? Math.max(0, age) : 0;
+}
+
+function executionPresentation(execution: Execution, maxRunningHours: number) {
+  if (execution.finalizationError) {
+    return {
+      label: 'Błąd finalizacji',
+      description: execution.finalizationError,
+      tone: 'red' as const
+    };
+  }
+  if (execution.status === 'awaiting_prices') {
+    return {
+      label: 'Oczekuje na ceny',
+      description: 'Dane cyklu są zapisane. Raport zakończy się automatycznie po pojawieniu się cen PSE.',
+      tone: 'amber' as const
+    };
+  }
+  if (execution.status === 'cancelled') {
+    return {
+      label: execution.cancelledAutomatically ? 'Automatycznie anulowany' : 'Anulowany',
+      description: execution.cancellationReason || 'Cykl nie został uwzględniony w raporcie oszczędności.',
+      tone: 'slate' as const
+    };
+  }
+  if (execution.status === 'running' && ageHours(execution.startedAt) >= maxRunningHours * 0.75) {
+    return {
+      label: 'Długi cykl',
+      description: `Cykl zbliża się do limitu ${maxRunningHours} godzin, po którym zostanie automatycznie anulowany.`,
+      tone: 'amber' as const
+    };
+  }
+  return {
+    label: 'W trakcie',
+    description: 'Home Assistant zgłosił start i oczekujemy na rzeczywiste zakończenie urządzenia.',
+    tone: 'blue' as const
+  };
 }
 
 function Metric({ label, value, note, positive = false }: { label: string; value: string; note?: string; positive?: boolean }) {
@@ -137,6 +207,7 @@ export default function TabSavings({ isPremiumUser, data, loadError }: Props) {
 
   const allTime = data.allTime || EMPTY_SUMMARY;
   const month = data.month || EMPTY_SUMMARY;
+  const maxRunningHours = data.maxRunningHours || 48;
   const savingsPercent = allTime.referenceCostPln > 0
     ? allTime.savingsPln / allTime.referenceCostPln * 100
     : 0;
@@ -167,19 +238,26 @@ export default function TabSavings({ isPremiumUser, data, loadError }: Props) {
 
       {data.executions.length > 0 && (
         <section className="rounded-3xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
-          <h3 className="text-xl font-black text-blue-950">Aktywne i oczekujące cykle</h3>
+          <h3 className="text-xl font-black text-blue-950">Cykle aktywne i wymagające uwagi</h3>
+          <p className="mt-1 text-sm text-blue-900">Anulowane cykle są widoczne przez 7 dni. Aktywny cykl starszy niż {maxRunningHours} godzin zostanie automatycznie anulowany.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {data.executions.map((execution) => (
-              <div key={execution.executionId} className="rounded-2xl border border-blue-200 bg-white p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <strong>{execution.deviceName}</strong>
-                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-black text-blue-800">{execution.status}</span>
+            {data.executions.map((execution) => {
+              const presentation = executionPresentation(execution, maxRunningHours);
+              const tone = EXECUTION_TONES[presentation.tone];
+              return (
+                <div key={execution.executionId} className={`rounded-2xl border p-4 ${tone.card}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <strong>{execution.deviceName}</strong>
+                    <span className={`rounded-full px-2 py-1 text-xs font-black ${tone.badge}`}>{presentation.label}</span>
+                  </div>
+                  <p className={`mt-2 text-sm font-semibold ${tone.note}`}>{presentation.description}</p>
+                  <p className="mt-3 text-sm text-slate-600">Start: {dateTime(execution.startedAt)}</p>
+                  {execution.endedAt && <p className="text-sm text-slate-600">Koniec: {dateTime(execution.endedAt)}</p>}
+                  {execution.energyKwh !== null && <p className="text-sm text-slate-600">Energia: {number(execution.energyKwh)} kWh</p>}
+                  <p className="text-xs text-slate-500">Ostatnia zmiana: {dateTime(execution.updatedAt)}</p>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">Start: {dateTime(execution.startedAt)}</p>
-                {execution.endedAt && <p className="text-sm text-slate-600">Koniec: {dateTime(execution.endedAt)}</p>}
-                {execution.energyKwh !== null && <p className="text-sm text-slate-600">Energia: {number(execution.energyKwh)} kWh</p>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
