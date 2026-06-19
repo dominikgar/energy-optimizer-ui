@@ -1,11 +1,13 @@
 # Rejestrowanie wykonań z Home Assistanta
 
-## Migracja
+## Migracje
 
 Przed wdrożeniem uruchom w Neon:
 
 ```text
 migrations/20260618_device_executions.sql
+migrations/20260619_device_execution_finalization.sql
+migrations/20260619_execution_lifecycle.sql
 ```
 
 ## Endpoint
@@ -21,9 +23,20 @@ Obsługiwane akcje:
 ```text
 start
 stop
+cancel
 ```
 
 Dla jednego użytkownika i urządzenia może istnieć tylko jeden aktywny cykl.
+
+## Idempotencja
+
+Automatyzacje Home Assistanta mogą powtórzyć wywołanie po restarcie lub problemie sieciowym:
+
+- ponowny `start` zwraca istniejący aktywny cykl z `idempotent: true`,
+- ponowny `stop` zakończonego cyklu zwraca poprzedni raport z `idempotent: true`,
+- ponowne `cancel` zwraca istniejący stan anulowania.
+
+Powtórzone żądania nie powinny tworzyć drugiego raportu.
 
 ## Home Assistant — konfiguracja z licznikiem energii
 
@@ -65,6 +78,20 @@ rest_command:
         "meter_end_kwh": {{ states('sensor.dishwasher_energy_total') | float(0) }},
         "source": "home_assistant"
       }
+
+  energyoptimizer_dishwasher_cancel:
+    url: "https://www.energyoptimizer.pl/api/v1/savings/execution"
+    method: POST
+    headers:
+      Authorization: !secret energyoptimizer_authorization
+      Content-Type: "application/json"
+    payload: >-
+      {
+        "action": "cancel",
+        "device_name": "dishwasher",
+        "reason": "Anulowano ręcznie w Home Assistant",
+        "source": "home_assistant"
+      }
 ```
 
 Podmień encję:
@@ -74,6 +101,8 @@ sensor.dishwasher_energy_total
 ```
 
 na własny licznik energii rosnący w kWh.
+
+Polecenie `cancel` można wywołać ręcznie z Narzędzi deweloperskich Home Assistanta, gdy urządzenie nie wystartowało, pomiar został przerwany albo sesja zawisła.
 
 ## Home Assistant — fallback bez licznika
 
@@ -153,7 +182,20 @@ Jeżeli cykl się zakończył, ale w tabeli `energy_prices` nie ma jeszcze cen d
 }
 ```
 
-Ponowne wysłanie akcji `stop` dla tego samego urządzenia finalizuje raport po pojawieniu się cen.
+Nie trzeba ponownie wysyłać `stop`. Cykl jest automatycznie finalizowany:
+
+1. podczas kolejnych odświeżeń sensora `/api/v1/savings/summary`,
+2. przez chroniony job okresowy jako ścieżkę awaryjną.
+
+## Zbyt stare sesje
+
+Sesja `running` starsza niż 48 godzin jest domyślnie automatycznie anulowana. Limit można zmienić zmienną środowiskową:
+
+```text
+EXECUTION_MAX_RUNNING_HOURS=48
+```
+
+Dozwolony zakres wynosi od 1 do 720 godzin. Anulowany cykl nie tworzy raportu oszczędności, ale przez 7 dni jest widoczny na dashboardzie wraz z przyczyną.
 
 ## Kolejność wyznaczania energii
 
@@ -169,4 +211,4 @@ Po zapisaniu pierwszych cykli wyniki są dostępne w aplikacji pod adresem:
 https://www.energyoptimizer.pl/savings
 ```
 
-Widok pokazuje oszczędność łączną i miesięczną, koszt rzeczywisty, energię, wyniki według urządzeń oraz historię wykonań.
+Widok pokazuje oszczędność łączną i miesięczną, koszt rzeczywisty, energię, wyniki według urządzeń, historię wykonań oraz czytelne statusy aktywnych, oczekujących i anulowanych cykli.
