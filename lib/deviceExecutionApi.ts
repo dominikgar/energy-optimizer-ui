@@ -39,6 +39,10 @@ function cleanSource(value: unknown): string {
   return String(value || 'home_assistant').trim().slice(0, 40) || 'home_assistant';
 }
 
+function cleanReason(value: unknown): string {
+  return String(value || '').trim().slice(0, 300);
+}
+
 function cleanMetadata(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return sanitizeEventMetadata(value as Record<string, unknown>);
@@ -126,10 +130,28 @@ async function startExecution(
          LIMIT 1`,
         [userId, deviceName]
       );
+      const activeExecution = existing.rows[0] || null;
+      if (!activeExecution) throw error;
+
+      await recordAppEvent({
+        level: 'info',
+        source: 'savings-execution',
+        eventType: 'execution.start_replayed',
+        message: `Powtórzony start urządzenia ${deviceName} zwrócił istniejący cykl.`,
+        userId,
+        requestId,
+        metadata: {
+          execution_id: activeExecution.execution_id,
+          device_name: deviceName
+        }
+      });
+
       return noStoreJson({
-        error: 'Dla tego urządzenia istnieje już aktywny cykl.',
-        execution: existing.rows[0] || null
-      }, 409);
+        status: 'running',
+        idempotent: true,
+        message: 'Dla tego urządzenia cykl był już aktywny.',
+        execution: activeExecution
+      });
     }
     throw error;
   }
@@ -161,7 +183,7 @@ async function stopExecution(
       : await client.query(
           `SELECT * FROM energy_device_executions
            WHERE user_id = $1 AND device_name = $2
-             AND status IN ('running', 'awaiting_prices')
+             AND status IN ('running', 'awaiting_prices', 'completed', 'cancelled')
            ORDER BY started_at DESC
            LIMIT 1
            FOR UPDATE`,
@@ -171,7 +193,7 @@ async function stopExecution(
     const execution = executionResult.rows[0];
     if (!execution) {
       await client.query('ROLLBACK');
-      return noStoreJson({ error: 'Nie znaleziono aktywnego cyklu urządzenia.' }, 404);
+      return noStoreJson({ error: 'Nie znaleziono cyklu urządzenia.' }, 404);
     }
 
     if (execution.status === 'completed') {
@@ -183,6 +205,7 @@ async function stopExecution(
       return noStoreJson({
         status: 'completed',
         idempotent: true,
+        message: 'Cykl został już wcześniej zakończony.',
         execution,
         report: report.rows[0] || null
       });
@@ -190,7 +213,11 @@ async function stopExecution(
 
     if (execution.status === 'cancelled') {
       await client.query('ROLLBACK');
-      return noStoreJson({ error: 'Cykl został anulowany.' }, 409);
+      return noStoreJson({
+        error: 'Cykl został anulowany i nie może zostać zakończony.',
+        status: 'cancelled',
+        execution
+      }, 409);
     }
 
     const endedAt = execution.ended_at
@@ -200,8 +227,17 @@ async function stopExecution(
       await client.query('ROLLBACK');
       return noStoreJson({ error: 'ended_at musi być poprawną datą ISO.' }, 400);
     }
+    if (endedAt.getTime() > Date.now() + 5 * 60 * 1000) {
+      await client.query('ROLLBACK');
+      return noStoreJson({ error: 'ended_at nie może wskazywać przyszłości.' }, 400);
+    }
 
     const startedAt = new Date(execution.started_at);
+    if (endedAt.getTime() <= startedAt.getTime()) {
+      await client.query('ROLLBACK');
+      return noStoreJson({ error: 'ended_at musi być późniejsze niż started_at.' }, 400);
+    }
+
     const durationHours = (endedAt.getTime() - startedAt.getTime()) / 3_600_000;
     const meterEnd = execution.meter_end_kwh ?? parseFiniteNumber(body.meter_end_kwh);
     const reportedEnergy = execution.reported_energy_kwh ?? parseFiniteNumber(body.energy_kwh);
@@ -209,7 +245,8 @@ async function stopExecution(
     const storedPowerKw = Number(execution.estimated_power_kw || 0);
     const powerKw = requestedPowerKw ?? (storedPowerKw > 0 ? storedPowerKw : null);
 
-    const energy = execution.energy_kwh
+    const hasStoredEnergy = execution.energy_kwh !== null && execution.energy_kwh !== undefined;
+    const energy = hasStoredEnergy
       ? {
           valid: true,
           error: null,
@@ -294,6 +331,7 @@ async function stopExecution(
       });
       return noStoreJson({
         status: 'awaiting_prices',
+        idempotent: execution.status === 'awaiting_prices',
         retry_after_seconds: 300,
         execution: {
           execution_id: execution.execution_id,
@@ -406,6 +444,124 @@ async function stopExecution(
   }
 }
 
+async function cancelExecution(
+  userId: string,
+  body: Record<string, unknown>,
+  requestId: string
+): Promise<NextResponse> {
+  const executionId = String(body.execution_id || '').trim();
+  const deviceName = cleanDeviceName(body.device_name);
+  const requestedReason = cleanReason(body.reason);
+  if (!executionId && !deviceName) {
+    return noStoreJson({ error: 'Podaj execution_id albo device_name.' }, 400);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const executionResult = executionId
+      ? await client.query(
+          `SELECT * FROM energy_device_executions
+           WHERE user_id = $1 AND execution_id = $2
+           LIMIT 1
+           FOR UPDATE`,
+          [userId, executionId]
+        )
+      : await client.query(
+          `SELECT * FROM energy_device_executions
+           WHERE user_id = $1 AND device_name = $2
+             AND status IN ('running', 'awaiting_prices', 'cancelled', 'completed')
+           ORDER BY started_at DESC
+           LIMIT 1
+           FOR UPDATE`,
+          [userId, deviceName]
+        );
+
+    const execution = executionResult.rows[0];
+    if (!execution) {
+      await client.query('ROLLBACK');
+      return noStoreJson({ error: 'Nie znaleziono cyklu urządzenia.' }, 404);
+    }
+
+    if (execution.status === 'completed') {
+      await client.query('ROLLBACK');
+      return noStoreJson({
+        error: 'Zakończonego cyklu nie można anulować.',
+        status: 'completed',
+        execution
+      }, 409);
+    }
+
+    if (execution.status === 'cancelled') {
+      await client.query('COMMIT');
+      return noStoreJson({
+        status: 'cancelled',
+        idempotent: true,
+        message: 'Cykl został już wcześniej anulowany.',
+        execution
+      });
+    }
+
+    const cancelledAt = parseDate(body.ended_at, new Date());
+    if (!cancelledAt) {
+      await client.query('ROLLBACK');
+      return noStoreJson({ error: 'ended_at musi być poprawną datą ISO.' }, 400);
+    }
+    const startedAt = new Date(execution.started_at);
+    if (cancelledAt.getTime() < startedAt.getTime()) {
+      await client.query('ROLLBACK');
+      return noStoreJson({ error: 'ended_at nie może być wcześniejsze niż started_at.' }, 400);
+    }
+
+    const reason = requestedReason || 'Cykl anulowany ręcznie przez użytkownika.';
+    const metadata = {
+      ...(execution.metadata || {}),
+      ...cleanMetadata(body.metadata),
+      cancellation_reason: reason,
+      cancelled_automatically: false,
+      cancelled_at: cancelledAt.toISOString()
+    };
+
+    const saved = await client.query(
+      `UPDATE energy_device_executions
+       SET status = 'cancelled',
+           ended_at = COALESCE(ended_at, $2),
+           metadata = $3::jsonb,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING execution_id, device_name, status, started_at, ended_at,
+                 energy_kwh, energy_source, metadata, updated_at`,
+      [execution.id, cancelledAt.toISOString(), JSON.stringify(metadata)]
+    );
+    await client.query('COMMIT');
+
+    await recordAppEvent({
+      level: 'info',
+      source: 'savings-execution',
+      eventType: 'execution.cancelled',
+      message: `Anulowano cykl urządzenia ${execution.device_name}.`,
+      userId,
+      requestId,
+      metadata: {
+        execution_id: execution.execution_id,
+        device_name: execution.device_name,
+        previous_status: execution.status,
+        reason
+      }
+    });
+
+    return noStoreJson({
+      status: 'cancelled',
+      execution: saved.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function handleDeviceExecutionRequest(request: NextRequest): Promise<NextResponse> {
   const requestId = createRequestId(request);
   try {
@@ -418,7 +574,8 @@ export async function handleDeviceExecutionRequest(request: NextRequest): Promis
     const action = String(body.action || '').trim().toLowerCase();
     if (action === 'start') return startExecution(auth.userId, body, requestId);
     if (action === 'stop') return stopExecution(auth.userId, body, requestId);
-    return noStoreJson({ error: 'action musi mieć wartość start albo stop.' }, 400);
+    if (action === 'cancel') return cancelExecution(auth.userId, body, requestId);
+    return noStoreJson({ error: 'action musi mieć wartość start, stop albo cancel.' }, 400);
   } catch (error) {
     console.error('Savings execution API error:', error);
     await recordAppEvent({
