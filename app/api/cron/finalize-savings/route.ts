@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRequestId, recordAppEvent } from '../../../../lib/appEvents';
 import { finalizeAwaitingExecutions } from '../../../../lib/deviceExecutionFinalizer';
+import { cancelStaleRunningExecutions } from '../../../../lib/deviceExecutionMaintenance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -21,22 +22,27 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await finalizeAwaitingExecutions({
+    const staleRunning = await cancelStaleRunningExecutions({
+      limit: 50,
+      requestId
+    });
+    const awaitingPrices = await finalizeAwaitingExecutions({
       limit: 50,
       requestId
     });
 
     return noStoreJson({
       status: 'success',
-      ...result
+      stale_running: staleRunning,
+      awaiting_prices: awaitingPrices
     });
   } catch (error) {
-    console.error('Savings finalization cron error:', error);
+    console.error('Savings lifecycle cron error:', error);
     await recordAppEvent({
       level: 'critical',
       source: 'savings-execution',
-      eventType: 'execution.finalization_batch_failed',
-      message: 'Nie udało się uruchomić automatycznej finalizacji oczekujących cykli.',
+      eventType: 'execution.maintenance_batch_failed',
+      message: 'Nie udało się uruchomić automatycznej obsługi cykli urządzeń.',
       requestId,
       metadata: { error }
     });

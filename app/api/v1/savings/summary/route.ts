@@ -3,6 +3,7 @@ import { authenticateApiSubscription } from '../../../../../lib/apiSubscription'
 import { pool } from '../../../../../lib/db';
 import { createRequestId, recordAppEvent } from '../../../../../lib/appEvents';
 import { finalizeAwaitingExecutions } from '../../../../../lib/deviceExecutionFinalizer';
+import { cancelStaleRunningExecutions } from '../../../../../lib/deviceExecutionMaintenance';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,24 @@ export async function GET(request: NextRequest) {
     const auth = await authenticateApiSubscription(request);
     if (!auth.ok || !auth.userId) {
       return noStoreJson({ error: auth.error }, auth.status);
+    }
+
+    try {
+      await cancelStaleRunningExecutions({
+        userId: auth.userId,
+        limit: 5,
+        requestId
+      });
+    } catch (error) {
+      await recordAppEvent({
+        level: 'warning',
+        source: 'savings-summary',
+        eventType: 'summary.maintenance_failed',
+        message: 'Podsumowanie działa, ale nie udało się sprawdzić zbyt starych cykli.',
+        userId: auth.userId,
+        requestId,
+        metadata: { error }
+      });
     }
 
     try {
