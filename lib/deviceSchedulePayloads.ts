@@ -1,3 +1,4 @@
+import { API_VERSION } from './apiContract';
 import type { DeviceScheduleResult, DeviceScheduleSlot } from './deviceScheduler';
 import type { ScheduleDay } from './deviceScheduleRequest';
 
@@ -13,6 +14,7 @@ interface SharedPayloadInput {
 
 export function buildUnfeasiblePayload(input: SharedPayloadInput & { result: DeviceScheduleResult }) {
   return {
+    api_version: API_VERSION,
     status: 'unfeasible',
     data_source: 'PSE RCE',
     market_price_only: true,
@@ -59,6 +61,7 @@ interface SuccessPayloadInput extends SharedPayloadInput {
 export function buildSuccessPayload(input: SuccessPayloadInput) {
   const validUntil = new Date(input.generatedAt.getTime() + input.validForSeconds * 1000);
   return {
+    api_version: API_VERSION,
     status: 'success',
     data_source: 'PSE RCE',
     market_price_only: true,
