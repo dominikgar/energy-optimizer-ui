@@ -84,6 +84,7 @@ test('translations are valid JSON and expose config flow labels', () => {
 
 test('execution services are registered and documented', () => {
   const init = readText('custom_components/energy_optimizer/__init__.py');
+  const constants = readText('custom_components/energy_optimizer/const.py');
   const services = readText('custom_components/energy_optimizer/services.py');
   const servicesYaml = readText('custom_components/energy_optimizer/services.yaml');
   const docs = readText('docs/hacs-mvp.md');
@@ -96,7 +97,8 @@ test('execution services are registered and documented', () => {
 
   assert.ok(init.includes('async_setup_services'));
   assert.ok(init.includes('async_unload_services'));
-  assert.ok(services.includes('energy_optimizer_execution_service'));
+  assert.ok(services.includes('EVENT_EXECUTION_SERVICE'));
+  assert.ok(constants.includes('energy_optimizer_execution_service'));
   assert.ok(services.includes('async_request_refresh'));
 });
 
