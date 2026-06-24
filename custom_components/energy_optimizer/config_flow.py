@@ -34,7 +34,6 @@ from .const import (
     DEFAULT_EARLIEST_START,
     DEFAULT_ENERGY_KWH,
     DEFAULT_LATEST_END,
-    DEFAULT_NAME,
     DEFAULT_POWER_KW,
     DOMAIN,
 )
@@ -152,9 +151,10 @@ class EnergyOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # noqa: BLE001 - Home Assistant config flows map unexpected setup failures.
                 errors["base"] = "unknown"
             else:
-                await self.async_set_unique_id(data[CONF_URL])
+                title = f"EnergyOptimizer {data[CONF_DEVICE_NAME]}"
+                await self.async_set_unique_id(f"{data[CONF_URL]}:{data[CONF_DEVICE_NAME]}")
                 self._abort_if_unique_id_configured(updates=data)
-                return self.async_create_entry(title=DEFAULT_NAME, data=data)
+                return self.async_create_entry(title=title, data=data)
 
         return self.async_show_form(
             step_id="user",
