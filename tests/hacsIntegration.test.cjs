@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const integrationDir = path.join(root, 'custom_components', 'energy_optimizer');
@@ -37,6 +38,14 @@ test('HACS integration has required repository structure', () => {
   }
   assert.equal(fs.existsSync(path.join(root, 'tmp.txt')), false);
   assert.equal(fs.existsSync(path.join(integrationDir, 'test.txt')), false);
+});
+
+test('Home Assistant Python files compile', () => {
+  const python = process.env.PYTHON || 'python3';
+  const files = fs.readdirSync(integrationDir)
+    .filter((file) => file.endsWith('.py'))
+    .map((file) => path.join(integrationDir, file));
+  execFileSync(python, ['-m', 'py_compile', ...files], { stdio: 'pipe' });
 });
 
 test('manifest contains required Home Assistant and HACS metadata', () => {
