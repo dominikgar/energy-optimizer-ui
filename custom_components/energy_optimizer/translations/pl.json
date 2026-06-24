@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EnergyOptimizer",
+        "description": "Połącz Home Assistanta z API EnergyOptimizer v1.",
+        "data": {
+          "url": "Adres EnergyOptimizer",
+          "api_token": "Token API",
+          "device_name": "Nazwa urządzenia",
+          "energy_kwh": "Wymagana energia [kWh]",
+          "power_kw": "Maksymalna moc [kW]",
+          "earliest_start": "Najwcześniejszy start, HH:MM",
+          "latest_end": "Najpóźniejszy koniec, HH:MM",
+          "contiguous": "Wymagaj pracy ciągłej"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z EnergyOptimizer.",
+      "invalid_auth": "Nieprawidłowy token API.",
+      "subscription_required": "Wymagana jest subskrypcja EnergyOptimizer PRO.",
+      "invalid_time_window": "Sprawdź okno czasowe, energię i moc urządzenia.",
+      "unknown": "Nieoczekiwany błąd."
+    },
+    "abort": {
+      "already_configured": "EnergyOptimizer jest już skonfigurowany."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "schedule_status": { "name": "Status harmonogramu" },
+      "current_price": { "name": "Aktualna cena" },
+      "schedule_total_cost": { "name": "Koszt harmonogramu" },
+      "schedule_average_price": { "name": "Średnia cena harmonogramu" },
+      "total_savings": { "name": "Oszczędności łącznie" },
+      "month_savings": { "name": "Oszczędności miesięczne" },
+      "total_energy": { "name": "Zoptymalizowana energia łącznie" },
+      "month_energy": { "name": "Zoptymalizowana energia miesięczna" },
+      "active_executions": { "name": "Aktywne cykle" }
+    },
+    "binary_sensor": {
+      "trigger_automation": { "name": "Uruchom urządzenie teraz" }
+    }
+  }
+}

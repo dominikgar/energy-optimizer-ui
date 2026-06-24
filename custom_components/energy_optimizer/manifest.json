@@ -1,0 +1,12 @@
+{
+  "domain": "energy_optimizer",
+  "name": "EnergyOptimizer",
+  "codeowners": ["@dominikgar"],
+  "config_flow": true,
+  "documentation": "https://github.com/dominikgar/energy-optimizer-ui/blob/main/docs/hacs-mvp.md",
+  "issue_tracker": "https://github.com/dominikgar/energy-optimizer-ui/issues",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}
