@@ -60,6 +60,21 @@ latest_end = 07:00
 contiguous = true
 ```
 
+## Opcje integracji
+
+Po dodaniu integracji można zmienić parametry urządzenia bez usuwania konfiguracji:
+
+```text
+Device name
+Required energy [kWh]
+Maximum power [kW]
+Earliest start HH:MM
+Latest end HH:MM
+Require continuous operation
+```
+
+Adres API i token pozostają częścią konfiguracji podstawowej. Po zapisaniu opcji Home Assistant przeładowuje wpis integracji, a coordinator zaczyna pobierać harmonogram dla nowych parametrów.
+
 ## Encje
 
 Integracja tworzy sensory:
@@ -163,7 +178,6 @@ Token API jest przechowywany w config entry i ukrywany w diagnostyce przez `asyn
 
 ## Następne kroki
 
-- dodać option flow do zmiany parametrów urządzenia bez usuwania integracji,
 - dodać testy `pytest-homeassistant-custom-component`,
 - przygotować osobne repozytorium HACS albo wydzielić katalog integracji do repo zgodnego z HACS,
 - dodać brand assets, minimum `brands/energy_optimizer/icon.png`.
