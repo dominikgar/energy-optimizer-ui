@@ -1,7 +1,7 @@
 {
   "domain": "energy_optimizer",
   "name": "EnergyOptimizer",
-  "codeowners": ["dominikgar"],
+  "codeowners": ["@dominikgar"],
   "config_flow": true,
   "documentation": "https://github.com/dominikgar/energy-optimizer-ui/blob/main/docs/hacs-mvp.md",
   "issue_tracker": "https://github.com/dominikgar/energy-optimizer-ui/issues",
