@@ -12,7 +12,7 @@ GET  /api/v1/savings/summary
 POST /api/v1/savings/execution
 ```
 
-W tym PR cykle `start`, `stop` i `cancel` są zaimplementowane w kliencie API, ale nie mają jeszcze osobnych usług Home Assistanta. To cel następnego pakietu.
+Cykle `start`, `stop` i `cancel` są dostępne jako natywne usługi Home Assistanta.
 
 ## Struktura HACS
 
@@ -26,6 +26,8 @@ custom_components/energy_optimizer/coordinator.py
 custom_components/energy_optimizer/diagnostics.py
 custom_components/energy_optimizer/manifest.json
 custom_components/energy_optimizer/sensor.py
+custom_components/energy_optimizer/services.py
+custom_components/energy_optimizer/services.yaml
 custom_components/energy_optimizer/strings.json
 custom_components/energy_optimizer/translations/en.json
 custom_components/energy_optimizer/translations/pl.json
@@ -82,6 +84,75 @@ trigger_automation
 
 `trigger_automation` jest odpowiednikiem dotychczasowego pola `trigger_automation` z YAML i pokazuje, czy skonfigurowane urządzenie powinno pracować teraz.
 
+## Usługi
+
+Integracja rejestruje trzy usługi:
+
+```text
+energy_optimizer.start_execution
+energy_optimizer.stop_execution
+energy_optimizer.cancel_execution
+```
+
+### `start_execution`
+
+Minimalne wywołanie:
+
+```yaml
+service: energy_optimizer.start_execution
+data:
+  reference_rate_pln_kwh: 0.85
+```
+
+Opcjonalnie można przekazać:
+
+```yaml
+service: energy_optimizer.start_execution
+data:
+  device_name: boiler
+  reference_rate_pln_kwh: 0.85
+  meter_start_kwh: 1234.56
+  power_kw: 2.0
+```
+
+### `stop_execution`
+
+Minimalnie można zakończyć ostatni cykl skonfigurowanego urządzenia:
+
+```yaml
+service: energy_optimizer.stop_execution
+```
+
+Z licznikiem energii:
+
+```yaml
+service: energy_optimizer.stop_execution
+data:
+  device_name: boiler
+  meter_end_kwh: 1236.12
+```
+
+Można też wskazać `execution_id`, jeżeli automatyzacja przechowuje identyfikator zwrócony przez API.
+
+### `cancel_execution`
+
+```yaml
+service: energy_optimizer.cancel_execution
+data:
+  device_name: boiler
+  reason: Anulowano ręcznie w Home Assistant
+```
+
+Jeżeli w Home Assistant istnieje więcej niż jeden wpis EnergyOptimizer, przekaż `entry_id` albo `device_name`, aby wskazać właściwą konfigurację.
+
+Po każdym wywołaniu integracja emituje zdarzenie:
+
+```text
+energy_optimizer_execution_service
+```
+
+Zdarzenie zawiera `service`, `status`, `execution_id`, `device_name`, `idempotent`, `api_version` i `error_code`, jeśli te dane są dostępne.
+
 ## Polling
 
 Integracja używa `DataUpdateCoordinator` i odświeża dane co 5 minut. Jeden cykl pobiera harmonogram urządzenia i podsumowanie oszczędności.
@@ -92,7 +163,6 @@ Token API jest przechowywany w config entry i ukrywany w diagnostyce przez `asyn
 
 ## Następne kroki
 
-- dodać usługi Home Assistanta: `start_execution`, `stop_execution`, `cancel_execution`,
 - dodać option flow do zmiany parametrów urządzenia bez usuwania integracji,
 - dodać testy `pytest-homeassistant-custom-component`,
 - przygotować osobne repozytorium HACS albo wydzielić katalog integracji do repo zgodnego z HACS,
