@@ -10,6 +10,10 @@ function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
 }
 
+function readText(relativePath) {
+  return fs.readFileSync(path.join(root, relativePath), 'utf8');
+}
+
 test('HACS integration has required repository structure', () => {
   for (const relativePath of [
     'hacs.json',
@@ -22,6 +26,8 @@ test('HACS integration has required repository structure', () => {
     'custom_components/energy_optimizer/diagnostics.py',
     'custom_components/energy_optimizer/manifest.json',
     'custom_components/energy_optimizer/sensor.py',
+    'custom_components/energy_optimizer/services.py',
+    'custom_components/energy_optimizer/services.yaml',
     'custom_components/energy_optimizer/strings.json',
     'custom_components/energy_optimizer/translations/en.json',
     'custom_components/energy_optimizer/translations/pl.json',
@@ -64,5 +70,38 @@ test('translations are valid JSON and expose config flow labels', () => {
     assert.equal(typeof data.config.step.user.data.api_token, 'string', relativePath);
     assert.equal(typeof data.entity.sensor.schedule_status.name, 'string', relativePath);
     assert.equal(typeof data.entity.binary_sensor.trigger_automation.name, 'string', relativePath);
+  }
+});
+
+test('execution services are registered and documented', () => {
+  const init = readText('custom_components/energy_optimizer/__init__.py');
+  const services = readText('custom_components/energy_optimizer/services.py');
+  const servicesYaml = readText('custom_components/energy_optimizer/services.yaml');
+  const docs = readText('docs/hacs-mvp.md');
+
+  for (const service of ['start_execution', 'stop_execution', 'cancel_execution']) {
+    assert.ok(services.includes(service), service);
+    assert.ok(servicesYaml.includes(`${service}:`), service);
+    assert.ok(docs.includes(`energy_optimizer.${service}`), service);
+  }
+
+  assert.ok(init.includes('async_setup_services'));
+  assert.ok(init.includes('async_unload_services'));
+  assert.ok(services.includes('energy_optimizer_execution_service'));
+  assert.ok(services.includes('async_request_refresh'));
+});
+
+test('execution client sends API-compatible payload fields', () => {
+  const api = readText('custom_components/energy_optimizer/api.py');
+  for (const field of [
+    'reference_rate_pln_kwh',
+    'meter_start_kwh',
+    'meter_end_kwh',
+    'energy_kwh',
+    'execution_id',
+    'device_name',
+    'home_assistant_hacs'
+  ]) {
+    assert.ok(api.includes(field), field);
   }
 });
