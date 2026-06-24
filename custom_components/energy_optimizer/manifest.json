@@ -1,0 +1,11 @@
+{
+  "domain": "energy_optimizer",
+  "name": "EnergyOptimizer",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://example.com",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}
