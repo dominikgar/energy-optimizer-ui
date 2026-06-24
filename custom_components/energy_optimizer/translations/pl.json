@@ -27,6 +27,29 @@
       "already_configured": "EnergyOptimizer jest już skonfigurowany."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ustawienia urządzenia EnergyOptimizer",
+        "description": "Zmień parametry urządzenia bez usuwania integracji.",
+        "data": {
+          "device_name": "Nazwa urządzenia",
+          "energy_kwh": "Wymagana energia [kWh]",
+          "power_kw": "Maksymalna moc [kW]",
+          "earliest_start": "Najwcześniejszy start, HH:MM",
+          "latest_end": "Najpóźniejszy koniec, HH:MM",
+          "contiguous": "Wymagaj pracy ciągłej"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z EnergyOptimizer.",
+      "invalid_auth": "Nieprawidłowy token API.",
+      "subscription_required": "Wymagana jest subskrypcja EnergyOptimizer PRO.",
+      "invalid_time_window": "Sprawdź okno czasowe, energię i moc urządzenia.",
+      "unknown": "Nieoczekiwany błąd."
+    }
+  },
   "entity": {
     "sensor": {
       "schedule_status": { "name": "Status harmonogramu" },
