@@ -99,37 +99,102 @@ class EnergyOptimizerClient:
 
     async def async_start_execution(
         self,
-        schedule_request: DeviceScheduleRequest,
+        *,
+        device_name: str,
+        reference_rate_pln_kwh: float,
+        meter_start_kwh: float | None = None,
+        power_kw: float | None = None,
+        started_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Start a savings execution cycle."""
+        payload: dict[str, Any] = {
+            "action": "start",
+            "device_name": device_name,
+            "reference_rate_pln_kwh": reference_rate_pln_kwh,
+            "source": "home_assistant_hacs",
+        }
+        if meter_start_kwh is not None:
+            payload["meter_start_kwh"] = meter_start_kwh
+        if power_kw is not None:
+            payload["power_kw"] = power_kw
+        if started_at:
+            payload["started_at"] = started_at
+        if metadata:
+            payload["metadata"] = metadata
+
         return await self._request(
             "POST",
             "/api/v1/savings/execution",
-            json_data={
-                "action": "start",
-                "device_name": schedule_request.device_name,
-                "energy_kwh": schedule_request.energy_kwh,
-                "power_kw": schedule_request.power_kw,
-                "earliest_start": schedule_request.earliest_start,
-                "latest_end": schedule_request.latest_end,
-                "contiguous": schedule_request.contiguous,
-            },
+            json_data=payload,
         )
 
-    async def async_stop_execution(self, execution_id: str) -> dict[str, Any]:
+    async def async_stop_execution(
+        self,
+        *,
+        execution_id: str | None = None,
+        device_name: str | None = None,
+        meter_end_kwh: float | None = None,
+        energy_kwh: float | None = None,
+        power_kw: float | None = None,
+        ended_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Stop a running savings execution cycle."""
+        payload: dict[str, Any] = {
+            "action": "stop",
+            "source": "home_assistant_hacs",
+        }
+        if execution_id:
+            payload["execution_id"] = execution_id
+        if device_name:
+            payload["device_name"] = device_name
+        if meter_end_kwh is not None:
+            payload["meter_end_kwh"] = meter_end_kwh
+        if energy_kwh is not None:
+            payload["energy_kwh"] = energy_kwh
+        if power_kw is not None:
+            payload["power_kw"] = power_kw
+        if ended_at:
+            payload["ended_at"] = ended_at
+        if metadata:
+            payload["metadata"] = metadata
+
         return await self._request(
             "POST",
             "/api/v1/savings/execution",
-            json_data={"action": "stop", "execution_id": execution_id},
+            json_data=payload,
         )
 
-    async def async_cancel_execution(self, execution_id: str) -> dict[str, Any]:
+    async def async_cancel_execution(
+        self,
+        *,
+        execution_id: str | None = None,
+        device_name: str | None = None,
+        reason: str | None = None,
+        ended_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Cancel a savings execution cycle."""
+        payload: dict[str, Any] = {
+            "action": "cancel",
+            "source": "home_assistant_hacs",
+        }
+        if execution_id:
+            payload["execution_id"] = execution_id
+        if device_name:
+            payload["device_name"] = device_name
+        if reason:
+            payload["reason"] = reason
+        if ended_at:
+            payload["ended_at"] = ended_at
+        if metadata:
+            payload["metadata"] = metadata
+
         return await self._request(
             "POST",
             "/api/v1/savings/execution",
-            json_data={"action": "cancel", "execution_id": execution_id},
+            json_data=payload,
         )
 
     async def _request(
