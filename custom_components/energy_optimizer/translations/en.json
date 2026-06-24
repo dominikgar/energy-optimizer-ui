@@ -27,6 +27,29 @@
       "already_configured": "EnergyOptimizer is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EnergyOptimizer device settings",
+        "description": "Change device parameters without removing the integration.",
+        "data": {
+          "device_name": "Device name",
+          "energy_kwh": "Required energy [kWh]",
+          "power_kw": "Maximum power [kW]",
+          "earliest_start": "Earliest start, HH:MM",
+          "latest_end": "Latest end, HH:MM",
+          "contiguous": "Require continuous operation"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to EnergyOptimizer.",
+      "invalid_auth": "Invalid API token.",
+      "subscription_required": "EnergyOptimizer PRO subscription is required.",
+      "invalid_time_window": "Check the time window, energy and power values.",
+      "unknown": "Unexpected error."
+    }
+  },
   "entity": {
     "sensor": {
       "schedule_status": { "name": "Schedule status" },
