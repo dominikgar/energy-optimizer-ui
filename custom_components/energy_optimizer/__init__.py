@@ -23,10 +23,8 @@ from .const import (
 )
 from .coordinator import EnergyOptimizerCoordinator
 
-type EnergyOptimizerConfigEntry = ConfigEntry
 
-
-async def async_setup_entry(hass: HomeAssistant, entry: EnergyOptimizerConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up EnergyOptimizer from a config entry."""
     session: ClientSession = async_get_clientsession(hass)
     data = entry.data
@@ -52,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: EnergyOptimizerConfigEnt
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: EnergyOptimizerConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload an EnergyOptimizer config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
