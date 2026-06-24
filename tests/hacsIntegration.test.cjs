@@ -69,7 +69,7 @@ test('HACS metadata points to sensor platforms', () => {
   assert.equal(hacs.render_readme, true);
 });
 
-test('translations are valid JSON and expose config flow labels', () => {
+test('translations are valid JSON and expose config and option flow labels', () => {
   for (const relativePath of [
     'custom_components/energy_optimizer/strings.json',
     'custom_components/energy_optimizer/translations/en.json',
@@ -77,9 +77,31 @@ test('translations are valid JSON and expose config flow labels', () => {
   ]) {
     const data = readJson(relativePath);
     assert.equal(typeof data.config.step.user.data.api_token, 'string', relativePath);
+    assert.equal(typeof data.options.step.init.data.device_name, 'string', relativePath);
+    assert.equal(typeof data.options.error.invalid_time_window, 'string', relativePath);
     assert.equal(typeof data.entity.sensor.schedule_status.name, 'string', relativePath);
     assert.equal(typeof data.entity.binary_sensor.trigger_automation.name, 'string', relativePath);
   }
+});
+
+test('option flow is registered and reloads integration on option changes', () => {
+  const init = readText('custom_components/energy_optimizer/__init__.py');
+  const configFlow = readText('custom_components/energy_optimizer/config_flow.py');
+  const docs = readText('docs/hacs-mvp.md');
+
+  assert.ok(configFlow.includes('async_get_options_flow'));
+  assert.ok(configFlow.includes('EnergyOptimizerOptionsFlowHandler'));
+  assert.ok(configFlow.includes('async_step_init'));
+  assert.ok(configFlow.includes('CONF_DEVICE_NAME'));
+  assert.ok(configFlow.includes('CONF_ENERGY_KWH'));
+  assert.ok(configFlow.includes('CONF_POWER_KW'));
+  assert.ok(configFlow.includes('CONF_EARLIEST_START'));
+  assert.ok(configFlow.includes('CONF_LATEST_END'));
+  assert.ok(configFlow.includes('CONF_CONTIGUOUS'));
+  assert.ok(init.includes('entry.options'));
+  assert.ok(init.includes('add_update_listener'));
+  assert.ok(init.includes('async_reload'));
+  assert.ok(docs.includes('## Opcje integracji'));
 });
 
 test('execution services are registered and documented', () => {
