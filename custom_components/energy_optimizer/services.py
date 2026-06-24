@@ -128,6 +128,14 @@ def _metadata(call: ServiceCall) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _execution_field(payload: dict[str, Any], field: str) -> Any:
+    """Return a field from the nested execution payload."""
+    execution = payload.get("execution")
+    if isinstance(execution, dict):
+        return execution.get(field)
+    return None
+
+
 def _fire_service_event(
     hass: HomeAssistant,
     service: str,
@@ -139,12 +147,8 @@ def _fire_service_event(
         {
             "service": service,
             "status": payload.get("status"),
-            "execution_id": (payload.get("execution") or {}).get("execution_id")
-            if isinstance(payload.get("execution"), dict)
-            else None,
-            "device_name": (payload.get("execution") or {}).get("device_name")
-            if isinstance(payload.get("execution"), dict)
-            else None,
+            "execution_id": _execution_field(payload, "execution_id"),
+            "device_name": _execution_field(payload, "device_name"),
             "idempotent": payload.get("idempotent"),
             "api_version": payload.get("api_version"),
             "error_code": payload.get("error_code"),
