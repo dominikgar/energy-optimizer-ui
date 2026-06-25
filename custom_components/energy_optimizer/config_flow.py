@@ -156,7 +156,7 @@ class EnergyOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Return the options flow handler."""
-        return EnergyOptimizerOptionsFlowHandler(config_entry)
+        return EnergyOptimizerOptionsFlowHandler()
 
     async def async_step_user(
         self,
@@ -177,7 +177,7 @@ class EnergyOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "subscription_required"
             except EnergyOptimizerApiError:
                 errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001 - Home Assistant config flows map unexpected setup failures.
+            except Exception:  # noqa: BLE001 - Home Assistant config flows map unexpected failures.
                 errors["base"] = "unknown"
             else:
                 title = f"EnergyOptimizer {data[CONF_DEVICE_NAME]}"
@@ -194,10 +194,6 @@ class EnergyOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class EnergyOptimizerOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle EnergyOptimizer options."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self,
