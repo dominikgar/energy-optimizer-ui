@@ -92,6 +92,8 @@ test('option flow is registered and reloads integration on option changes', () =
   assert.ok(configFlow.includes('async_get_options_flow'));
   assert.ok(configFlow.includes('EnergyOptimizerOptionsFlowHandler'));
   assert.ok(configFlow.includes('async_step_init'));
+  assert.ok(configFlow.includes('return EnergyOptimizerOptionsFlowHandler()'));
+  assert.equal(configFlow.includes('self.config_entry = config_entry'), false);
   assert.ok(configFlow.includes('CONF_DEVICE_NAME'));
   assert.ok(configFlow.includes('CONF_ENERGY_KWH'));
   assert.ok(configFlow.includes('CONF_POWER_KW'));
