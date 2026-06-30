@@ -10,6 +10,7 @@
 ## Administrator i utrzymanie
 
 - [`monitoring.md`](monitoring.md) — aktywacja audytu zdarzeń i panelu `/admin/diagnostics`.
+- Panel `/admin` — indeks dostępnych paneli administracyjnych i widoków kontrolnych.
 - [`release-checklist.md`](release-checklist.md) — lista kontrolna wdrożenia, jeżeli jest używana w danej wersji repozytorium.
 
 ## Publiczna pomoc w aplikacji
@@ -27,4 +28,4 @@ API automatyzacji → Raportowanie faktycznych oszczędności
 API automatyzacji → Sensory podsumowania oszczędności
 ```
 
-Po każdym wdrożeniu warto sprawdzić publiczną stronę `/dashboardy`, panel użytkownika `/savings`, ekran API automatyzacji, endpoint `/api/v1/savings/summary` oraz panel administratora `/admin/diagnostics`.
+Po każdym wdrożeniu warto sprawdzić publiczną stronę `/dashboardy`, panel użytkownika `/savings`, ekran API automatyzacji, endpoint `/api/v1/savings/summary`, indeks administratora `/admin` oraz panel administratora `/admin/diagnostics`.
