@@ -1,6 +1,7 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 import { Metadata } from 'next';
+import AdminGlobalLink from './components/AdminGlobalLink';
 
 export const metadata: Metadata = {
   title: 'EnergyOptimizer - analiza zużycia i cen energii',
@@ -40,7 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       signUpForceRedirectUrl="/"
     >
       <html lang="pl">
-        <body>{children}</body>
+        <body>
+          {children}
+          <AdminGlobalLink />
+        </body>
       </html>
     </ClerkProvider>
   );
