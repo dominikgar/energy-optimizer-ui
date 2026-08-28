@@ -19,11 +19,7 @@ import Footer from './components/Footer';
 import { calculateDynamicOfferCost, calculateFixedRateCost } from '../lib/costEngine';
 import { calculateDistributionCost } from '../lib/distributionCost';
 import { fetchPseDayForecast } from '../lib/pse';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+import { pool } from '../lib/db';
 
 const IconZap = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 fill-emerald-500">
@@ -112,26 +108,37 @@ export default async function Home({ searchParams }) {
   }
 
   let isPremiumUser = false;
+  let subscriptionVerificationUnavailable = false;
   let userApiKey = null;
   let availableTariffs = [];
   let currentTariff = { price_per_kwh: 1.10, tariff_name: 'G11_TAURON' };
 
   try {
-    const [subscriptionResult, tariffResult] = await Promise.all([
-      pool.query('SELECT is_active, api_key FROM user_subscriptions WHERE user_id = $1', [userId]),
-      pool.query('SELECT tariff_name, price_per_kwh, description FROM energy_tariffs ORDER BY tariff_name ASC')
-    ]);
+    const subscriptionResult = await pool.query(
+      'SELECT is_active, api_key FROM user_subscriptions WHERE user_id = $1',
+      [userId]
+    );
 
     if (subscriptionResult.rows[0]?.is_active) {
       isPremiumUser = true;
       userApiKey = subscriptionResult.rows[0].api_key;
     }
+  } catch (error) {
+    // A database outage must not turn an existing PRO customer into a free
+    // customer in the UI or invite them to purchase again.
+    subscriptionVerificationUnavailable = true;
+    console.error('Subscription verification error:', error);
+  }
 
+  try {
+    const tariffResult = await pool.query(
+      'SELECT tariff_name, price_per_kwh, description FROM energy_tariffs ORDER BY tariff_name ASC'
+    );
     availableTariffs = tariffResult.rows;
     const selectedTariff = availableTariffs.find((tariff) => tariff.tariff_name === selectedProvider);
     if (selectedTariff) currentTariff = selectedTariff;
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error('Tariff query error:', error);
   }
 
   const displayProviders = availableTariffs.filter(
@@ -337,6 +344,18 @@ export default async function Home({ searchParams }) {
         </nav>
 
         <div className="animate-fade-in-up">
+          {subscriptionVerificationUnavailable ? (
+            <section className="mx-auto max-w-2xl rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center shadow-sm">
+              <h1 className="text-2xl font-black text-amber-950">Nie można chwilowo zweryfikować dostępu PRO</h1>
+              <p className="mt-3 text-amber-900">
+                Twoja subskrypcja nie została zmieniona. Spróbuj odświeżyć stronę za chwilę — nie kupuj dostępu ponownie.
+              </p>
+              <a href="/" className="mt-6 inline-flex rounded-full bg-amber-700 px-5 py-3 font-bold text-white hover:bg-amber-800">
+                Spróbuj ponownie
+              </a>
+            </section>
+          ) : (
+            <>
           {activeTab === 'radar' && (
             <TabRadar isPremiumUser={isPremiumUser} todayForecast={todayForecast} tomorrowForecast={tomorrowForecast} forecastError={forecastError} />
           )}
@@ -377,6 +396,8 @@ export default async function Home({ searchParams }) {
             />
           )}
           {activeTab === 'api' && <TabApi userApiKey={userApiKey} />}
+            </>
+          )}
         </div>
       </main>
 
