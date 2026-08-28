@@ -23,24 +23,29 @@ export async function GET(request: NextRequest) {
     ? `schedule.${responseBody.status}`
     : `http.${status}`;
 
-  await recordAppEvent({
-    level,
-    source: 'device-api',
-    eventType,
-    message: typeof responseBody.error === 'string'
-      ? responseBody.error
-      : `Wyliczono harmonogram urządzenia ${deviceName}.`,
-    requestId,
-    metadata: {
-      http_status: status,
-      duration_ms: Date.now() - startedAt,
-      device_name: deviceName.slice(0, 80),
-      day: request.nextUrl.searchParams.get('day') || 'today',
-      earliest_start: request.nextUrl.searchParams.get('earliest_start'),
-      latest_end: request.nextUrl.searchParams.get('latest_end'),
-      contiguous: request.nextUrl.searchParams.get('contiguous')
-    }
-  });
+  // A successful HA poll is expected every five minutes and is not an audit
+  // event. Persist only client/server failures, without making telemetry part
+  // of the response path when Neon is unavailable.
+  if (status >= 400) {
+    void recordAppEvent({
+      level,
+      source: 'device-api',
+      eventType,
+      message: typeof responseBody.error === 'string'
+        ? responseBody.error
+        : `Nie udało się wyliczyć harmonogramu urządzenia ${deviceName}.`,
+      requestId,
+      metadata: {
+        http_status: status,
+        duration_ms: Date.now() - startedAt,
+        device_name: deviceName.slice(0, 80),
+        day: request.nextUrl.searchParams.get('day') || 'today',
+        earliest_start: request.nextUrl.searchParams.get('earliest_start'),
+        latest_end: request.nextUrl.searchParams.get('latest_end'),
+        contiguous: request.nextUrl.searchParams.get('contiguous')
+      }
+    });
+  }
 
   return response;
 }
