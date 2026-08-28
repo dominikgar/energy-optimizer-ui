@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 import { createHash, randomUUID } from 'node:crypto';
 import { pool } from './db';
 
