@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 import { createHash, randomUUID } from 'node:crypto';
 import { pool } from './db';
 
@@ -19,6 +21,14 @@ const MAX_STRING_LENGTH = 1000;
 const MAX_ARRAY_LENGTH = 30;
 const MAX_OBJECT_KEYS = 40;
 const MAX_DEPTH = 5;
+const ERROR_DEDUPLICATION_MS = 5 * 60 * 1000;
+
+const globalForEvents = globalThis as typeof globalThis & {
+  energyOptimizerEventLogTimes?: Map<string, number>;
+};
+
+const eventLogTimes = globalForEvents.energyOptimizerEventLogTimes ?? new Map<string, number>();
+globalForEvents.energyOptimizerEventLogTimes = eventLogTimes;
 
 function truncate(value: string, maximum = MAX_STRING_LENGTH): string {
   return value.length <= maximum ? value : `${value.slice(0, maximum)}…`;
@@ -70,6 +80,28 @@ export function createRequestId(request?: Request): string {
     || randomUUID();
 }
 
+export function shouldRecordAppEvent(
+  fingerprint: string,
+  level: AppEventLevel,
+  now = Date.now()
+): boolean {
+  // Repeated failures are particularly noisy during an outage.  Keep the first
+  // occurrence for diagnostics, then let the caller serve subsequent requests
+  // without performing another database write.
+  if (level !== 'error' && level !== 'critical') return true;
+
+  const previous = eventLogTimes.get(fingerprint);
+  if (previous !== undefined && now - previous < ERROR_DEDUPLICATION_MS) return false;
+
+  eventLogTimes.set(fingerprint, now);
+  if (eventLogTimes.size > 5000) {
+    for (const [key, recordedAt] of eventLogTimes) {
+      if (now - recordedAt >= ERROR_DEDUPLICATION_MS) eventLogTimes.delete(key);
+    }
+  }
+  return true;
+}
+
 export async function recordAppEvent(input: AppEventInput): Promise<boolean> {
   const source = truncate(input.source.trim() || 'unknown', 120);
   const eventType = truncate(input.eventType.trim() || 'unknown', 160);
@@ -77,6 +109,8 @@ export async function recordAppEvent(input: AppEventInput): Promise<boolean> {
   const metadata = sanitizeEventMetadata(input.metadata);
   const fingerprint = input.fingerprint
     || eventFingerprint(source, eventType, message);
+
+  if (!shouldRecordAppEvent(fingerprint, input.level)) return true;
 
   try {
     await pool.query(
