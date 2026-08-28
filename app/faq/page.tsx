@@ -40,22 +40,23 @@ export default function FaqPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen flex flex-col bg-[#f5f7f4] font-sans text-slate-900">
       <Navbar />
       
-      <main className="flex-grow max-w-3xl mx-auto w-full py-16 px-4">
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-black text-slate-900 mb-4">Często Zadawane Pytania</h1>
-          <p className="text-slate-600">Rozwiewamy wątpliwości na temat taryf dynamicznych i naszej aplikacji.</p>
+      <main className="flex-grow mx-auto w-full max-w-3xl px-6 py-20">
+        <div className="mb-12 max-w-2xl">
+          <p className="mb-3 text-sm font-black uppercase tracking-[0.16em] text-emerald-700">Centrum pomocy</p>
+          <h1 className="text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">Pytania, zanim zaczniesz.</h1>
+          <p className="mt-5 text-lg leading-8 text-slate-600">Najważniejsze informacje o taryfach dynamicznych, analizie danych i Home Assistant.</p>
         </div>
 
         <div className="space-y-4">
           {faqs.map((faq, index) => (
             <details 
               key={index} 
-              className="group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden [&_summary::-webkit-details-marker]:hidden"
+              className="group overflow-hidden rounded-3xl border border-emerald-950/10 bg-white shadow-sm [&_summary::-webkit-details-marker]:hidden"
             >
-              <summary className="flex items-center justify-between p-6 cursor-pointer font-bold text-slate-800 hover:text-emerald-600 transition-colors">
+              <summary className="flex cursor-pointer items-center justify-between p-6 font-bold text-slate-800 transition-colors hover:text-emerald-700">
                 <span className="text-lg">{faq.question}</span>
                 <span className="ml-4 flex-shrink-0 transition-transform duration-300 group-open:-rotate-180">
                   <svg className="w-6 h-6 text-slate-400 group-hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,10 +71,10 @@ export default function FaqPage() {
           ))}
         </div>
 
-        <div className="mt-16 bg-emerald-50 border border-emerald-100 rounded-3xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Nie znalazłeś odpowiedzi?</h2>
-          <p className="text-slate-600 mb-6">Napisz do nas, chętnie pomożemy Ci przeanalizować Twoją sytuację.</p>
-          <a href="mailto:kontakt@energyoptimizer.pl" className="inline-block bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-emerald-700 transition-colors">
+        <div className="mt-16 rounded-[32px] bg-emerald-950 p-8 text-center text-white">
+          <h2 className="mb-4 text-2xl font-bold">Nie znalazłeś odpowiedzi?</h2>
+          <p className="mb-6 text-emerald-100/75">Napisz do nas, chętnie pomożemy Ci przeanalizować Twoją sytuację.</p>
+          <a href="mailto:kontakt@energyoptimizer.pl" className="inline-block rounded-full bg-[#c8f169] px-8 py-3 font-bold text-emerald-950 transition-colors hover:bg-[#d7f88d]">
             Napisz wiadomość
           </a>
         </div>
