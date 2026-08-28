@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   sanitizeEventMetadata,
-  eventFingerprint
+  eventFingerprint,
+  shouldRecordAppEvent
 } = require('../lib/appEvents.ts');
 
 test('sanitizes sensitive values recursively', () => {
@@ -38,4 +39,17 @@ test('creates stable event fingerprints', () => {
   assert.equal(first, second);
   assert.notEqual(first, different);
   assert.equal(first.length, 32);
+});
+
+test('suppresses repeated error events for five minutes', () => {
+  const fingerprint = `test-${Date.now()}-${Math.random()}`;
+  assert.equal(shouldRecordAppEvent(fingerprint, 'error', 10_000), true);
+  assert.equal(shouldRecordAppEvent(fingerprint, 'error', 10_000 + (5 * 60 * 1000) - 1), false);
+  assert.equal(shouldRecordAppEvent(fingerprint, 'error', 10_000 + (5 * 60 * 1000)), true);
+});
+
+test('does not suppress distinct non-error events', () => {
+  const fingerprint = `test-warning-${Date.now()}-${Math.random()}`;
+  assert.equal(shouldRecordAppEvent(fingerprint, 'warning', 10_000), true);
+  assert.equal(shouldRecordAppEvent(fingerprint, 'warning', 10_001), true);
 });
