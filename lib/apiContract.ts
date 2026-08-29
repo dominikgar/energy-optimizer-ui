@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 export const API_VERSION = '1.0';
 export const API_VERSION_HEADER = 'X-EnergyOptimizer-API-Version';
 
@@ -129,6 +131,23 @@ export function validateSavingsSummaryContract(payload: unknown): string[] {
   ]) requireNumber(record, key, errors);
   for (const key of ['last_cycle_savings_pln', 'last_cycle_energy_kwh']) {
     requireNullableNumber(record, key, errors);
+  }
+  return errors;
+}
+
+export function validateHomeAssistantContract(payload: unknown): string[] {
+  const { record, errors } = validateCommon(payload);
+  if (!record) return errors;
+  if (record.status !== 'success') errors.push('status must equal success');
+  if (!isRecord(record.schedule)) {
+    errors.push('schedule must be an object');
+  } else {
+    errors.push(...validateScheduleContract(record.schedule).map((error) => `schedule.${error}`));
+  }
+  if (!isRecord(record.summary)) {
+    errors.push('summary must be an object');
+  } else {
+    errors.push(...validateSavingsSummaryContract(record.summary).map((error) => `summary.${error}`));
   }
   return errors;
 }

@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 {
   "domain": "energy_optimizer",
   "name": "EnergyOptimizer",
@@ -8,5 +10,5 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

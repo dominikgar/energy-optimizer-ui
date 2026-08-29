@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -55,7 +57,7 @@ test('manifest contains required Home Assistant and HACS metadata', () => {
   assert.equal(manifest.config_flow, true);
   assert.equal(manifest.integration_type, 'hub');
   assert.equal(manifest.iot_class, 'cloud_polling');
-  assert.equal(manifest.version, '0.1.1');
+  assert.equal(manifest.version, '0.1.2');
   assert.deepEqual(manifest.requirements, []);
   assert.ok(manifest.documentation.includes('docs/hacs-mvp.md'));
   assert.ok(manifest.issue_tracker.includes('energy-optimizer-ui/issues'));
@@ -124,6 +126,17 @@ test('execution services are registered and documented', () => {
   assert.ok(services.includes('EVENT_EXECUTION_SERVICE'));
   assert.ok(constants.includes('energy_optimizer_execution_service'));
   assert.ok(services.includes('async_request_refresh'));
+});
+
+test('coordinator uses the aggregate endpoint and lifecycle refreshes stay immediate', () => {
+  const api = readText('custom_components/energy_optimizer/api.py');
+  const coordinator = readText('custom_components/energy_optimizer/coordinator.py');
+  const configFlow = readText('custom_components/energy_optimizer/config_flow.py');
+  assert.ok(api.includes('/api/v1/home-assistant'));
+  assert.ok(coordinator.includes('async_get_home_assistant_data'));
+  assert.ok(configFlow.includes('async_get_home_assistant_data'));
+  assert.equal(coordinator.includes('async_get_device_schedule(self.schedule_request)'), false);
+  assert.equal(coordinator.includes('async_get_summary()'), false);
 });
 
 test('execution client sends API-compatible payload fields', () => {

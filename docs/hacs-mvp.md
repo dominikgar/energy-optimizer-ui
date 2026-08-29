@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 # EnergyOptimizer HACS MVP
 
 Ten pakiet dodaje pierwszy natywny komponent Home Assistanta dla EnergyOptimizer.
@@ -7,8 +9,7 @@ Ten pakiet dodaje pierwszy natywny komponent Home Assistanta dla EnergyOptimizer
 Integracja tworzy konfigurację przez UI Home Assistanta i korzysta z ustabilizowanych endpointów API v1:
 
 ```text
-GET  /api/v1/schedule/device
-GET  /api/v1/savings/summary
+GET  /api/v1/home-assistant
 POST /api/v1/savings/execution
 ```
 
@@ -170,7 +171,7 @@ Zdarzenie zawiera `service`, `status`, `execution_id`, `device_name`, `idempoten
 
 ## Polling
 
-Integracja używa `DataUpdateCoordinator` i odświeża dane co 5 minut. Jeden cykl pobiera harmonogram urządzenia i podsumowanie oszczędności.
+Integracja używa `DataUpdateCoordinator` i odświeża dane co 30 minut. Jeden cykl pobiera harmonogram urządzenia i podsumowanie oszczędności jednym wywołaniem `GET /api/v1/home-assistant`. Po `start_execution`, `stop_execution` lub `cancel_execution` integracja odświeża dane natychmiast.
 
 ## Bezpieczeństwo
 

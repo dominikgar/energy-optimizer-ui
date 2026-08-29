@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 """Data coordinator for EnergyOptimizer."""
 
 from __future__ import annotations
@@ -56,8 +58,7 @@ class EnergyOptimizerCoordinator(DataUpdateCoordinator[EnergyOptimizerData]):
     async def _async_update_data(self) -> EnergyOptimizerData:
         """Fetch data from the API."""
         try:
-            schedule = await self.client.async_get_device_schedule(self.schedule_request)
-            summary = await self.client.async_get_summary()
+            schedule, summary = await self.client.async_get_home_assistant_data(self.schedule_request)
         except (EnergyOptimizerAuthError, EnergyOptimizerSubscriptionError) as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except EnergyOptimizerApiError as err:

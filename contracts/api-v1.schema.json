@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://www.energyoptimizer.pl/contracts/api-v1.schema.json",
@@ -125,12 +127,24 @@
         "awaiting_price_executions": { "type": "number" }
       },
       "additionalProperties": true
+    },
+    "homeAssistant": {
+      "type": "object",
+      "required": ["api_version", "status", "schedule", "summary"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/version" },
+        "status": { "const": "success" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "summary": { "$ref": "#/$defs/summary" }
+      },
+      "additionalProperties": true
     }
   },
   "anyOf": [
     { "$ref": "#/$defs/error" },
     { "$ref": "#/$defs/schedule" },
     { "$ref": "#/$defs/execution" },
-    { "$ref": "#/$defs/summary" }
+    { "$ref": "#/$defs/summary" },
+    { "$ref": "#/$defs/homeAssistant" }
   ]
 }

@@ -1,3 +1,5 @@
+/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
+/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createAsyncCache } = require('../lib/asyncCache.ts');
@@ -54,4 +56,13 @@ test('keeps the last good value when refresh throws inside stale window', async 
   assert.equal(await cache.get('day', async () => 'prices', policy), 'prices');
   now = 1001;
   assert.equal(await cache.get('day', async () => { throw new Error('PSE offline'); }, policy), 'prices');
+});
+
+test('clears cached values after an explicit invalidation', async () => {
+  let calls = 0;
+  const cache = createAsyncCache(() => 0);
+  const loader = async () => ++calls;
+  assert.equal(await cache.get('summary', loader, { ...policy, isEmpty: () => false }), 1);
+  cache.clear();
+  assert.equal(await cache.get('summary', loader, { ...policy, isEmpty: () => false }), 2);
 });
