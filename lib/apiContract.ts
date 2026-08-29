@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 export const API_VERSION = '1.0';
 export const API_VERSION_HEADER = 'X-EnergyOptimizer-API-Version';
 

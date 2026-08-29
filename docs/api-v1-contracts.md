@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 # EnergyOptimizer API v1 — kontrakty dla Home Assistanta i HACS
 
 Kontrakty poniższych endpointów są stabilizowane jako API `1.0`:

@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://www.energyoptimizer.pl/contracts/api-v1.schema.json",

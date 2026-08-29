@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 # EnergyOptimizer HACS MVP
 
 Ten pakiet dodaje pierwszy natywny komponent Home Assistanta dla EnergyOptimizer.

@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateApiSubscription } from '../../../../../lib/apiSubscription';
 import { createRequestId, recordAppEvent } from '../../../../../lib/appEvents';

@@ -1,5 +1,3 @@
-/Users/dominik/.zprofile:1: no such file or directory: /opt/homebrew/bin/brew
-/Users/dominik/.zprofile:2: no such file or directory: /opt/homebrew/bin/brew
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const apiSchema = require('../contracts/api-v1.schema.json');
