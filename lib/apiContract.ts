@@ -133,6 +133,23 @@ export function validateSavingsSummaryContract(payload: unknown): string[] {
   return errors;
 }
 
+export function validateHomeAssistantContract(payload: unknown): string[] {
+  const { record, errors } = validateCommon(payload);
+  if (!record) return errors;
+  if (record.status !== 'success') errors.push('status must equal success');
+  if (!isRecord(record.schedule)) {
+    errors.push('schedule must be an object');
+  } else {
+    errors.push(...validateScheduleContract(record.schedule).map((error) => `schedule.${error}`));
+  }
+  if (!isRecord(record.summary)) {
+    errors.push('summary must be an object');
+  } else {
+    errors.push(...validateSavingsSummaryContract(record.summary).map((error) => `summary.${error}`));
+  }
+  return errors;
+}
+
 export function validateExecutionContract(payload: unknown): string[] {
   const { record, errors } = validateCommon(payload);
   if (!record) return errors;

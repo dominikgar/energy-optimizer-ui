@@ -15,6 +15,7 @@ import {
   recordAppEvent,
   sanitizeEventMetadata
 } from './appEvents';
+import { invalidateSavingsSummaryCache } from './savingsSummary';
 
 function noStoreJson(body: unknown, status = 200): NextResponse {
   const response = NextResponse.json(body, { status });
@@ -585,9 +586,15 @@ export async function handleDeviceExecutionRequest(request: NextRequest): Promis
 
     const body = await request.json() as Record<string, unknown>;
     const action = String(body.action || '').trim().toLowerCase();
-    if (action === 'start') return startExecution(auth.userId, body, requestId);
-    if (action === 'stop') return stopExecution(auth.userId, body, requestId);
-    if (action === 'cancel') return cancelExecution(auth.userId, body, requestId);
+    if (action === 'start' || action === 'stop' || action === 'cancel') {
+      const response = await (action === 'start'
+        ? startExecution(auth.userId, body, requestId)
+        : action === 'stop'
+          ? stopExecution(auth.userId, body, requestId)
+          : cancelExecution(auth.userId, body, requestId));
+      if (response.status < 400) invalidateSavingsSummaryCache();
+      return response;
+    }
     return noStoreJson({ error: 'action musi mieć wartość start, stop albo cancel.' }, 400);
   } catch (error) {
     console.error('Savings execution API error:', error);

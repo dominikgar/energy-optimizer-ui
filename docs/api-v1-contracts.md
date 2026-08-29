@@ -6,6 +6,7 @@ Kontrakty poniższych endpointów są stabilizowane jako API `1.0`:
 GET  /api/v1/schedule/device
 POST /api/v1/savings/execution
 GET  /api/v1/savings/summary
+GET  /api/v1/home-assistant
 ```
 
 Każda odpowiedź JSON zawiera:
@@ -140,6 +141,10 @@ updated_at
 ```
 
 Pola dotyczące ostatniego cyklu i `updated_at` mogą mieć wartość `null`.
+
+## `/api/v1/home-assistant`
+
+Endpoint dla natywnej integracji HACS. Przyjmuje te same parametry harmonogramu co `/api/v1/schedule/device`, uwierzytelnia żądanie tylko raz i zwraca oba istniejące payloady w polach `schedule` i `summary`. Podsumowanie jest cache'owane przez maksymalnie 10 minut w ciepłym runtime, a cache jest unieważniany po udanym `start`, `stop` lub `cancel`, dzięki czemu odświeżenie wykonywane przez usługę Home Assistanta widzi aktualny stan natychmiast.
 
 ## Zasady zmian
 

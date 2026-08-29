@@ -8,6 +8,7 @@ const {
   validateApiErrorContract,
   validateScheduleContract,
   validateSavingsSummaryContract,
+  validateHomeAssistantContract,
   validateExecutionContract
 } = require('../lib/apiContract.ts');
 const {
@@ -37,7 +38,7 @@ function sharedScheduleInput() {
 test('formal schema allows domain errors to match an execution and error contract', () => {
   assert.equal(apiSchema.oneOf, undefined);
   assert.equal(Array.isArray(apiSchema.anyOf), true);
-  assert.equal(apiSchema.anyOf.length, 4);
+  assert.equal(apiSchema.anyOf.length, 5);
 });
 
 test('adds API version and stable error codes without removing legacy fields', () => {
@@ -142,6 +143,26 @@ test('validates savings summary contract', () => {
     updated_at: null
   });
   assert.deepEqual(validateSavingsSummaryContract(payload), []);
+});
+
+test('validates the aggregated Home Assistant polling contract', () => {
+  const schedule = versionApiPayload(buildSuccessPayload({
+    ...sharedScheduleInput(),
+    currentDate: '2026-06-19', currentTime: '12:30', currentInterval: '12:30',
+    currentPrice: 0.22, activeSlot: null, validForSeconds: 300,
+    result: { feasible: true, reason: null, slots: [], totalEnergyKwh: 0, totalCost: 0,
+      averagePricePerKwh: 0, runtimeHours: 0, earliestPossibleCost: 0,
+      savingsVsEarliest: 0, windowDurationHours: 1, crossesMidnight: false }
+  }));
+  const summary = versionApiPayload({
+    status: 'success', currency: 'PLN', timezone: 'Europe/Warsaw', total_savings_pln: 0,
+    total_energy_kwh: 0, total_cycles: 0, month_savings_pln: 0, month_energy_kwh: 0,
+    month_cycles: 0, last_cycle_savings_pln: null, last_cycle_energy_kwh: null,
+    active_executions: 0, running_executions: 0, awaiting_price_executions: 0
+  });
+  assert.deepEqual(validateHomeAssistantContract(versionApiPayload({
+    status: 'success', schedule, summary
+  })), []);
 });
 
 test('validates all execution lifecycle states', () => {

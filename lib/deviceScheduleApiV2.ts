@@ -18,11 +18,8 @@ function json(body: unknown, status = 200): NextResponse {
   return response;
 }
 
-export async function handleDeviceScheduleRequest(request: NextRequest): Promise<NextResponse> {
+export async function handleAuthenticatedDeviceScheduleRequest(request: NextRequest): Promise<NextResponse> {
   try {
-    const auth = await authenticateApiSubscription(request);
-    if (!auth.ok) return json({ error: auth.error }, auth.status);
-
     const parsed = parseDeviceScheduleRequest(request.nextUrl.searchParams);
     if (!parsed.ok) return json({ error: parsed.error }, 400);
 
@@ -144,6 +141,17 @@ export async function handleDeviceScheduleRequest(request: NextRequest): Promise
     }));
   } catch (error) {
     console.error('Device schedule API error:', error);
+    return json({ error: 'Wewnętrzny błąd serwera.' }, 500);
+  }
+}
+
+export async function handleDeviceScheduleRequest(request: NextRequest): Promise<NextResponse> {
+  try {
+    const auth = await authenticateApiSubscription(request);
+    if (!auth.ok) return json({ error: auth.error }, auth.status);
+    return handleAuthenticatedDeviceScheduleRequest(request);
+  } catch (error) {
+    console.error('Device schedule API authentication error:', error);
     return json({ error: 'Wewnętrzny błąd serwera.' }, 500);
   }
 }

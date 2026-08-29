@@ -142,8 +142,7 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Validate credentials and device parameters against the API."""
     session = async_get_clientsession(hass)
     client = EnergyOptimizerClient(session, data[CONF_URL], data[CONF_API_TOKEN])
-    await client.async_get_device_schedule(_schedule_request_from(data))
-    await client.async_get_summary()
+    await client.async_get_home_assistant_data(_schedule_request_from(data))
 
 
 class EnergyOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

@@ -82,15 +82,31 @@ class EnergyOptimizerClient:
         self._api_token = api_token
         self._timeout = timeout
 
+    async def async_get_home_assistant_data(
+        self,
+        schedule_request: DeviceScheduleRequest,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Fetch the schedule and savings summary in one API request."""
+        payload = await self._request(
+            "GET",
+            "/api/v1/home-assistant",
+            params=schedule_request.as_params(),
+        )
+        schedule = payload.get("schedule")
+        summary = payload.get("summary")
+        if not isinstance(schedule, dict) or not isinstance(summary, dict):
+            raise EnergyOptimizerApiError("EnergyOptimizer API returned an invalid aggregate payload")
+        return schedule, summary
+
     async def async_get_summary(self) -> dict[str, Any]:
-        """Fetch savings summary."""
+        """Fetch savings summary (kept for configuration compatibility)."""
         return await self._request("GET", "/api/v1/savings/summary")
 
     async def async_get_device_schedule(
         self,
         schedule_request: DeviceScheduleRequest,
     ) -> dict[str, Any]:
-        """Fetch device schedule."""
+        """Fetch device schedule (kept for configuration compatibility)."""
         return await self._request(
             "GET",
             "/api/v1/schedule/device",

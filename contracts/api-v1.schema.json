@@ -125,12 +125,24 @@
         "awaiting_price_executions": { "type": "number" }
       },
       "additionalProperties": true
+    },
+    "homeAssistant": {
+      "type": "object",
+      "required": ["api_version", "status", "schedule", "summary"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/version" },
+        "status": { "const": "success" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "summary": { "$ref": "#/$defs/summary" }
+      },
+      "additionalProperties": true
     }
   },
   "anyOf": [
     { "$ref": "#/$defs/error" },
     { "$ref": "#/$defs/schedule" },
     { "$ref": "#/$defs/execution" },
-    { "$ref": "#/$defs/summary" }
+    { "$ref": "#/$defs/summary" },
+    { "$ref": "#/$defs/homeAssistant" }
   ]
 }

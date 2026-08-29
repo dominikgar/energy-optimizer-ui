@@ -55,3 +55,12 @@ test('keeps the last good value when refresh throws inside stale window', async 
   now = 1001;
   assert.equal(await cache.get('day', async () => { throw new Error('PSE offline'); }, policy), 'prices');
 });
+
+test('clears cached values after an explicit invalidation', async () => {
+  let calls = 0;
+  const cache = createAsyncCache(() => 0);
+  const loader = async () => ++calls;
+  assert.equal(await cache.get('summary', loader, { ...policy, isEmpty: () => false }), 1);
+  cache.clear();
+  assert.equal(await cache.get('summary', loader, { ...policy, isEmpty: () => false }), 2);
+});
