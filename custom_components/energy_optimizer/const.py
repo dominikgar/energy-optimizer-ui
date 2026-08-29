@@ -41,7 +41,9 @@ DEFAULT_POWER_KW = 2.0
 DEFAULT_EARLIEST_START = "00:00"
 DEFAULT_LATEST_END = "07:00"
 DEFAULT_CONTIGUOUS = True
-DEFAULT_SCAN_INTERVAL = timedelta(minutes=5)
+# Keep cloud polling comfortably above Neon's autosuspend window so an idle
+# database can actually scale to zero between Home Assistant refreshes.
+DEFAULT_SCAN_INTERVAL = timedelta(minutes=30)
 
 API_VERSION = "1.0"
 API_TIMEOUT_SECONDS = 15
