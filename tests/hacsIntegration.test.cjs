@@ -55,7 +55,7 @@ test('manifest contains required Home Assistant and HACS metadata', () => {
   assert.equal(manifest.config_flow, true);
   assert.equal(manifest.integration_type, 'hub');
   assert.equal(manifest.iot_class, 'cloud_polling');
-  assert.equal(manifest.version, '0.1.0');
+  assert.equal(manifest.version, '0.1.1');
   assert.deepEqual(manifest.requirements, []);
   assert.ok(manifest.documentation.includes('docs/hacs-mvp.md'));
   assert.ok(manifest.issue_tracker.includes('energy-optimizer-ui/issues'));
