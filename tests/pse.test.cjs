@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parsePseDayRows } = require('../lib/pse.ts');
+const { fetchRawPseRows, parsePseDayRows } = require('../lib/pse.ts');
 
 function formatTime(minutes) {
   const normalized = minutes % 1440;
@@ -44,4 +44,23 @@ test('returns null when there are too few intervals for requested window', () =>
     { business_date: '2026-06-17', period: '01:00 - 02:00', rce_pln: 200 }
   ];
   assert.equal(parsePseDayRows(rows, '2026-06-17', 3), null);
+});
+
+test('uses only the supported PSE v2 business_date filter when prices are not published yet', async () => {
+  const requestedUrls = [];
+  const fetchStub = async (url) => {
+    requestedUrls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ value: [] })
+    };
+  };
+
+  const rows = await fetchRawPseRows('2026-09-04', fetchStub);
+
+  assert.deepEqual(rows, []);
+  assert.deepEqual(requestedUrls, [
+    "https://api.raporty.pse.pl/api/rce-pln?$filter=business_date%20eq%20'2026-09-04'"
+  ]);
 });
