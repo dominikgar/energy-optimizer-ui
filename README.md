@@ -125,7 +125,7 @@ Wspólny klient i parser znajdują się w `lib/pse.ts`. Z tego samego kodu korzy
 - Planer urządzeń,
 - API Home Assistanta.
 
-Obsługiwane są dane godzinowe i 15-minutowe oraz dwa warianty filtrowania API PSE: `business_date` i starsze `doba`.
+Obsługiwane są dane godzinowe i 15-minutowe. Zapytania do API PSE v2 używają aktualnego pola `business_date`; brak jeszcze nieopublikowanych danych jest traktowany jako poprawna pusta odpowiedź.
 
 Pole `period` jest traktowane jako początek interwału. Pole `dtime` bywa czasem końca interwału i jest używane tylko jako fallback.
 

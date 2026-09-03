@@ -99,8 +99,12 @@ function rowMatchesDate(row: Record<string, unknown>, date: string): boolean {
   return dateTime.startsWith(date);
 }
 
-async function fetchPseRows(url: string, date: string): Promise<Record<string, unknown>[]> {
-  const response = await fetch(url, {
+async function fetchPseRows(
+  url: string,
+  date: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<Record<string, unknown>[]> {
+  const response = await fetchImpl(url, {
     cache: 'no-store',
     headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(12_000)
@@ -126,26 +130,21 @@ async function fetchPseRows(url: string, date: string): Promise<Record<string, u
   return extractRows(payload).filter((row) => rowMatchesDate(row, date));
 }
 
-async function fetchRawPseRows(date: string): Promise<Record<string, unknown>[]> {
-  const filters = [
-    `business_date eq '${date}'`,
-    `business_date eq ${date}`,
-    `doba eq '${date}'`
-  ];
+export async function fetchRawPseRows(
+  date: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<Record<string, unknown>[]> {
+  const filter = `business_date eq '${date}'`;
 
-  for (const filter of filters) {
-    try {
-      const rows = await fetchPseRows(buildPseFilterUrl(filter), date);
-      if (rows.length > 0) return rows;
-    } catch (error) {
-      console.error('PSE API connection error', {
-        filter,
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
+  try {
+    return await fetchPseRows(buildPseFilterUrl(filter), date, fetchImpl);
+  } catch (error) {
+    console.error('PSE API connection error', {
+      filter,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return [];
   }
-
-  return [];
 }
 
 export function parsePseDayRows(
